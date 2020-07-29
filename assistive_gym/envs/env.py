@@ -16,7 +16,7 @@ from .agents.tool import Tool
 from .agents.furniture import Furniture
 
 class AssistiveEnv(gym.Env):
-    def __init__(self, robot=None, human=None, task=None, obs_robot_len=0, obs_human_len=0, time_step=0.02, frame_skip=5, render=False, gravity=-9.81, seed=1001):
+    def __init__(self, robot=None, human=None, bed_type='default', task=None, obs_robot_len=0, obs_human_len=0, time_step=0.02, frame_skip=5, render=False, gravity=-9.81, seed=1001):
         self.task = task
         self.time_step = time_step
         self.frame_skip = frame_skip
@@ -97,6 +97,10 @@ class AssistiveEnv(gym.Env):
         self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random)
         if self.human.controllable:
             self.agents.append(self.human)
+
+
+        print('furniture type: ', furniture_type)
+
         # Create furniture (wheelchair, bed, or table)
         if furniture_type is not None:
             self.furniture.init(furniture_type, self.directory, self.id, self.np_random, wheelchair_mounted=self.robot.wheelchair_mounted)
@@ -234,8 +238,8 @@ class AssistiveEnv(gym.Env):
             if self.id is not None:
                 p.disconnect(self.id)
             try:
-                self.width = get_monitors()[0].width
-                self.height = get_monitors()[0].height
+                self.width = 1920/2#get_monitors()[0].width
+                self.height = 1080/2#get_monitors()[0].height
             except Exception as e:
                 self.width = 1920
                 self.height = 1080

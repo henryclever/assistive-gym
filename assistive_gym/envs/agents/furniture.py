@@ -8,6 +8,7 @@ class Furniture(Agent):
         super(Furniture, self).__init__()
 
     def init(self, furniture_type, directory, id, np_random, wheelchair_mounted=False):
+        print(directory, "DIRECTORY")
         if 'wheelchair' in furniture_type:
             furniture = p.loadURDF(os.path.join(directory, 'wheelchair', 'wheelchair.urdf' if not wheelchair_mounted else 'wheelchair_jaco.urdf'), basePosition=[0, 0, 0.06], baseOrientation=p.getQuaternionFromEuler([np.pi/2.0, 0, np.pi], physicsClientId=id), physicsClientId=id)
         elif furniture_type == 'bed':
@@ -19,6 +20,10 @@ class Furniture(Agent):
             # furniture = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=bed_collision, baseVisualShapeIndex=bed_visual, basePosition=[0, 0, 0], useMaximalCoordinates=True, physicsClientId=self.id)
             # # Initialize bed position
             # p.resetBasePositionAndOrientation(furniture, [-0.1, 0, 0], p.getQuaternionFromEuler([np.pi/2.0, 0, 0], physicsClientId=self.id), physicsClientId=self.id)
+        elif furniture_type == 'bed_mesh':
+            furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.419, -0.864, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
+
+
         elif furniture_type == 'table':
             furniture = p.loadURDF(os.path.join(directory, 'table', 'table_tall.urdf'), basePosition=[0.25, -0.9, 0], baseOrientation=[0, 0, 0, 1], physicsClientId=id)
         elif furniture_type == 'bowl':

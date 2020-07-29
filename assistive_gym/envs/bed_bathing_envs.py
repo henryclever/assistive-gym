@@ -12,6 +12,10 @@ class BedBathingPR2Env(BedBathingEnv):
     def __init__(self):
         super(BedBathingPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False))
 
+class BedBathingMeshPR2Env(BedBathingEnv):
+    def __init__(self):
+        super(BedBathingMeshPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False), bed_type='pressuresim')
+
 class BedBathingBaxterEnv(BedBathingEnv):
     def __init__(self):
         super(BedBathingBaxterEnv, self).__init__(robot=Baxter(robot_arm), human=Human(human_controllable_joint_indices, controllable=False))

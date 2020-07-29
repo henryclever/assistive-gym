@@ -1,0 +1,62 @@
+<?xml version="1.0" ?>
+<robot name="bed">
+
+  <material name="off_yellow">
+    <color rgba="1 0.95 0.051 1"/>
+  </material>
+
+  <material name="green">
+    <color rgba="0.0 0.5 0.0 1"/>
+  </material>
+
+  <link name="mattress">
+    <inertial>
+      <mass value="0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="bed_mattress.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="off_yellow"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <!--mesh filename="bed_mattress_vhacd.obj" scale="1.1 1.1 1.1"/-->
+        <mesh filename="bed_mattress.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+  </link>
+  <joint name="mattress_pmat_link" type="fixed">
+    <parent link="mattress"/>
+    <child link="pmat"/>
+    <axis xyz="0 0 1"/>
+    <origin rpy="0 0 0" xyz="0 0 0"/>
+    <limit effort="2000" lower="0" upper="2" velocity="1"/>
+  </joint>
+  <link name="pmat">
+    <inertial>
+      <mass value="0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="bed_pmat.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="green"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <!--mesh filename="bed_mattress_vhacd.obj" scale="1.1 1.1 1.1"/-->
+        <mesh filename="bed_pmat.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
+

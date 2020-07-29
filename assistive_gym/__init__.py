@@ -63,6 +63,13 @@ register(
     max_episode_steps=200,
 )
 
+# Bed Bathing Mesh PR2
+register(
+    id='BedBathingMeshPR2-v1',
+    entry_point='assistive_gym.envs:BedBathingMeshPR2Env',
+    max_episode_steps=10000,
+)
+
 # Bed Bathing PR2
 register(
     id='BedBathingPR2-v1',

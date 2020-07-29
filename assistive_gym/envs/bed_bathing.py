@@ -2,16 +2,24 @@ import os
 from gym import spaces
 import numpy as np
 import pybullet as p
+import time
 
 from .env import AssistiveEnv
 from .agents import furniture
 from .agents.furniture import Furniture
 
 class BedBathingEnv(AssistiveEnv):
-    def __init__(self, robot, human):
-        super(BedBathingEnv, self).__init__(robot=robot, human=human, task='bed_bathing', obs_robot_len=(17 + len(robot.controllable_joint_indices)), obs_human_len=(18 + len(human.controllable_joint_indices)))
+    def __init__(self, robot, human, bed_type):
+        self.step_num = 0
+        self.bed_type = bed_type
+        self.time_last = 0.0
+        super(BedBathingEnv, self).__init__(robot=robot, human=human, bed_type='default', task='bed_bathing', obs_robot_len=(17 + len(robot.controllable_joint_indices)), obs_human_len=(18 + len(human.controllable_joint_indices)))
 
     def step(self, action):
+        self.step_num += 1
+
+        print('taking step', self.step_num, '  time: ', time.time()-self.time_last)
+        self.time_last = time.time()
         self.take_step(action, gains=self.config('robot_gains'), forces=self.config('robot_forces'))
 
         obs = self._get_obs()
@@ -103,9 +111,80 @@ class BedBathingEnv(AssistiveEnv):
             return human_obs
         return np.concatenate([robot_obs, human_obs]).ravel()
 
+
+    def update_mattress_mesh(self):
+
+        mesh_data_folder = "/home/henry/data/resting_meshes/general_supine/roll0_f_lay_set14_2000_of_2109_none_stiff/"
+        mv = np.load(mesh_data_folder+"mv.npy")#, allow_pickle = True, encoding='latin1')
+        mf = np.load(mesh_data_folder+"mf.npy")#, allow_pickle = True, encoding='latin1')
+        bv = np.load(mesh_data_folder+"bv.npy", allow_pickle = True, encoding='latin1')
+        bf = np.load(mesh_data_folder+"bf.npy", allow_pickle = True, encoding='latin1')
+
+        for sample_idx in range(1501, 1502):# (0, np.shape(mv)[0]):
+            mattress_verts = np.array(mv[sample_idx, :, :]) / 2.58872  # np.load(folder + "mattress_verts_py.npy")/2.58872
+            mattress_verts = np.concatenate((mattress_verts[:, 2:3], mattress_verts[:, 0:1], mattress_verts[:, 1:2]), axis=1)
+
+            mattress_faces = np.array(mf[sample_idx, :, :])  # np.load(folder + "mattress_faces_py.npy")
+            mattress_faces = np.concatenate((np.array([[0, 6054, 6055]]), mattress_faces), axis=0)
+            #mattress_vf = [mattress_verts, mattress_faces]
+
+
+
+
+
+            mat_blanket_verts = np.array(bv[sample_idx]) / 2.58872  # np.load(folder + "mat_blanket_verts_py.npy")/2.58872
+            mat_blanket_verts = np.concatenate((mat_blanket_verts[:, 2:3], mat_blanket_verts[:, 0:1], mat_blanket_verts[:, 1:2]), axis=1)
+            mat_blanket_faces = np.array(bf[sample_idx])  # np.load(folder + "mat_blanket_faces_py.npy")
+
+            pmat_faces = []
+            for i in range(np.shape(mat_blanket_faces)[0]):
+                if np.max(mat_blanket_faces[i, :]) < 2244:  # 2300:# < 10000:
+                    pmat_faces.append([mat_blanket_faces[i, 0], mat_blanket_faces[i, 2], mat_blanket_faces[i, 1]])
+
+                # elif np.max(mat_blanket_faces[i, :]) > 3000 and np.max(mat_blanket_faces[i, :])< 3100:  #
+                #    stagger = 0
+                #    pmat_faces.append([mat_blanket_faces[i, 0]+stagger, mat_blanket_faces[i, 2]+stagger, mat_blanket_faces[i, 1]+stagger])
+
+            pmat_verts = np.copy(mat_blanket_verts)[0:6000]
+            pmat_faces = np.array(pmat_faces)
+            pmat_faces = np.concatenate((np.array([[0, 69, 1], [0, 68, 69]]), pmat_faces), axis=0)
+
+            pmat_vf = [pmat_verts, pmat_faces]
+
+
+
+
+
+        outmesh_mattress_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_mattress.obj"
+        with open(outmesh_mattress_path, 'w') as fp:
+            for v_idx in range(mattress_verts.shape[0]):
+                fp.write('v %f %f %f\n' % (mattress_verts[v_idx, 0], mattress_verts[v_idx, 1], mattress_verts[v_idx, 2]))
+
+            for f_idx in range(mattress_faces.shape[0]):
+                fp.write('f %d %d %d\n' % (mattress_faces[f_idx, 0]+1, mattress_faces[f_idx, 1]+1, mattress_faces[f_idx, 2]+1))
+
+
+        outmesh_pmat_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_pmat.obj"
+        with open(outmesh_pmat_path, 'w') as fp:
+            for v_idx in range(pmat_verts.shape[0]):
+                fp.write('v %f %f %f\n' % (pmat_verts[v_idx, 0], pmat_verts[v_idx, 1], pmat_verts[v_idx, 2]))
+
+            for f_idx in range(pmat_faces.shape[0]):
+                fp.write('f %d %d %d\n' % (pmat_faces[f_idx, 0]+1, pmat_faces[f_idx, 1]+1, pmat_faces[f_idx, 2]+1))
+
+
+
     def reset(self):
         super(BedBathingEnv, self).reset()
-        self.build_assistive_env('bed', fixed_human_base=False)
+
+
+        if self.bed_type == 'pressuresim':
+            self.update_mattress_mesh()
+            self.build_assistive_env(furniture_type='bed_mesh', fixed_human_base=False)
+        else:
+            self.build_assistive_env(furniture_type='bed', fixed_human_base=False)
+
+
 
         self.furniture.set_friction(self.furniture.base, friction=5)
 
