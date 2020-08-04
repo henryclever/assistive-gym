@@ -93,8 +93,11 @@ class AssistiveEnv(gym.Env):
         # Create robot
         self.robot.init(self.directory, self.id, self.np_random, fixed_base=fixed_robot_base)
         self.agents.append(self.robot)
+
+
+
         # Create human
-        self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random)
+        self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=self.directory)
         if self.human.controllable:
             self.agents.append(self.human)
 

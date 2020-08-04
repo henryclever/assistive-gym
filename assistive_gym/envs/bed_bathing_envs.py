@@ -4,7 +4,7 @@ from .agents.pr2 import PR2
 from .agents.baxter import Baxter
 from .agents.sawyer import Sawyer
 from .agents.jaco import Jaco
-from .agents.human import Human
+from .agents.human import Human, HumanMesh
 
 robot_arm = 'left'
 human_controllable_joint_indices = human.right_arm_joints
@@ -14,7 +14,13 @@ class BedBathingPR2Env(BedBathingEnv):
 
 class BedBathingMeshPR2Env(BedBathingEnv):
     def __init__(self):
-        super(BedBathingMeshPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False), bed_type='pressuresim')
+        dataset_info_dict = {}
+        dataset_info_dict['gender'] = 'female'
+        dataset_info_dict['data_ct'] = [1501, 2000, 2109]
+        dataset_info_dict['posture'] = 'general_supine'
+        dataset_info_dict['set_num'] = 14
+        super(BedBathingMeshPR2Env, self).__init__(robot=PR2(robot_arm), human=HumanMesh(dataset_info_dict), bed_type='pressuresim')
+        #super(BedBathingMeshPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False), bed_type='pressuresim')
 
 class BedBathingBaxterEnv(BedBathingEnv):
     def __init__(self):

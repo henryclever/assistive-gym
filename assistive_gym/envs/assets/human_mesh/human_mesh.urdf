@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<robot name="human">
+
+  <material name="off_yellow">
+    <color rgba="1 0.95 0.051 1"/>
+  </material>
+
+  <material name="blue">
+    <color rgba="0.05 0.05 0.6 1"/>
+  </material>
+
+  <link name="human">
+    <inertial>
+      <mass value="0"/>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+    </inertial>
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="human.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+      <material name="blue"/>
+    </visual>
+    <collision>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <!--mesh filename="bed_mattress_vhacd.obj" scale="1.1 1.1 1.1"/-->
+        <mesh filename="human.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+  </link>
+</robot>
+

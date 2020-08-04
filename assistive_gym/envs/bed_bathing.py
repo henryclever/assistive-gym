@@ -114,6 +114,7 @@ class BedBathingEnv(AssistiveEnv):
 
     def update_mattress_mesh(self):
 
+
         mesh_data_folder = "/home/henry/data/resting_meshes/general_supine/roll0_f_lay_set14_2000_of_2109_none_stiff/"
         mv = np.load(mesh_data_folder+"mv.npy")#, allow_pickle = True, encoding='latin1')
         mf = np.load(mesh_data_folder+"mf.npy")#, allow_pickle = True, encoding='latin1')
@@ -178,8 +179,11 @@ class BedBathingEnv(AssistiveEnv):
         super(BedBathingEnv, self).reset()
 
 
+
+
         if self.bed_type == 'pressuresim':
             self.update_mattress_mesh()
+            self.human.update_human_mesh()
             self.build_assistive_env(furniture_type='bed_mesh', fixed_human_base=False)
         else:
             self.build_assistive_env(furniture_type='bed', fixed_human_base=False)
@@ -189,29 +193,41 @@ class BedBathingEnv(AssistiveEnv):
         self.furniture.set_friction(self.furniture.base, friction=5)
 
         # Setup human in the air and let them settle into a resting pose on the bed
-        joints_positions = [(self.human.j_right_shoulder_x, 30)]
-        self.human.setup_joints(joints_positions, use_static_joints=False, reactive_force=None)
-        self.human.set_base_pos_orient([-0.15, 0.2, 0.95], [-np.pi/2.0, 0, 0])
+        if self.human.human_type == 'kinematic':
+            joints_positions = [(self.human.j_right_shoulder_x, 30)]
+            self.human.setup_joints(joints_positions, use_static_joints=False, reactive_force=None)
+            self.human.set_base_pos_orient([-0.15, 0.2, 0.95], [-np.pi/2.0, 0, 0])
 
         p.setGravity(0, 0, -1, physicsClientId=self.id)
 
-        # Add small variation in human joint positions
-        motor_indices, motor_positions, motor_velocities, motor_torques = self.human.get_motor_joint_states()
-        self.human.set_joint_angles(motor_indices, self.np_random.uniform(-0.1, 0.1, size=len(motor_indices)))
+        if self.human.human_type == 'kinematic':
+            # Add small variation in human joint positions
+            motor_indices, motor_positions, motor_velocities, motor_torques = self.human.get_motor_joint_states()
+            self.human.set_joint_angles(motor_indices, self.np_random.uniform(-0.1, 0.1, size=len(motor_indices)))
 
         # Let the person settle on the bed
         for _ in range(100):
             p.stepSimulation(physicsClientId=self.id)
 
-        # Lock human joints and set velocities to 0
-        joints_positions = []
-        self.human.setup_joints(joints_positions, use_static_joints=True, reactive_force=None, reactive_gain=0.01)
-        self.human.set_mass(self.human.base, mass=0)
-        self.human.set_base_velocity(linear_velocity=[0, 0, 0], angular_velocity=[0, 0, 0])
 
-        shoulder_pos = self.human.get_pos_orient(self.human.right_shoulder)[0]
-        elbow_pos = self.human.get_pos_orient(self.human.right_elbow)[0]
-        wrist_pos = self.human.get_pos_orient(self.human.right_wrist)[0]
+
+        if self.human.human_type == 'kinematic':
+            # Lock human joints and set velocities to 0
+            joints_positions = []
+            self.human.setup_joints(joints_positions, use_static_joints=True, reactive_force=None, reactive_gain=0.01)
+            self.human.set_mass(self.human.base, mass=0)
+            self.human.set_base_velocity(linear_velocity=[0, 0, 0], angular_velocity=[0, 0, 0])
+
+
+        if self.human.human_type == 'kinematic':
+            shoulder_pos = self.human.get_pos_orient(self.human.right_shoulder)[0]
+            elbow_pos = self.human.get_pos_orient(self.human.right_elbow)[0]
+            wrist_pos = self.human.get_pos_orient(self.human.right_wrist)[0]
+        elif self.human.human_type == 'mesh':
+            shoulder_pos = self.human.get_mesh_pos_orient(self.human.right_shoulder)[0]
+            elbow_pos = self.human.get_mesh_pos_orient(self.human.right_elbow)[0]
+            wrist_pos = self.human.get_mesh_pos_orient(self.human.right_wrist)[0]
+
 
         target_ee_pos = np.array([-0.6, 0.2, 1]) + self.np_random.uniform(-0.05, 0.05, size=3)
         target_ee_orient = np.array(p.getQuaternionFromEuler(np.array(self.robot.toc_ee_orient_rpy[self.task]), physicsClientId=self.id))

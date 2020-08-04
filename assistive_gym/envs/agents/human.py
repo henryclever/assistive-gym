@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import pybullet as p
 from .agent import Agent
@@ -8,9 +9,181 @@ right_leg_joints = [28, 29, 30, 31, 32, 33, 34]
 left_leg_joints = [35, 36, 37, 38, 39, 40, 41]
 head_joints = [20, 21, 22, 23]
 
+
+class HumanMesh(Agent):
+    def __init__(self, dataset_info_dict):
+        self.posture = dataset_info_dict['posture']
+        self.gender = dataset_info_dict['gender']
+        self.data_ct_idx = dataset_info_dict['data_ct'][0]
+        self.data_ct_l = dataset_info_dict['data_ct'][1]
+        self.data_ct_h = dataset_info_dict['data_ct'][2]
+        self.set_num = dataset_info_dict['set_num']
+        self.controllable = False
+        self.controllable_joint_indices = []
+        self.human_type = "mesh"
+
+        self.right_pecs = 2
+        self.right_shoulder = 5
+        self.right_elbow = 7
+        self.right_wrist = 9
+        self.left_pecs = 12
+        self.left_shoulder = 15
+        self.left_elbow = 17
+        self.left_wrist = 19
+        self.neck = 20
+        self.head = 23
+        self.stomach = 24
+        self.waist = 27
+        self.right_hip = 30
+        self.right_knee = 31
+        self.right_ankle = 34
+        self.left_hip = 37
+        self.left_knee = 38
+        self.left_ankle = 41
+
+    def init(self, human_creation, limits_model, static_human_base, impairment, gender, config, id, np_random, mass=None, radius_scale=1.0, height_scale=1.0, directory = None):
+        self.impairment = 'none'
+        self.tremors = np.zeros(len(self.controllable_joint_indices))
+        # Initialize human
+
+        #self.body = human_creation.create_human(static=static_human_base, limit_scale=self.limit_scale, specular_color=[0.1, 0.1, 0.1], gender=self.gender, config=config, mass=mass, radius_scale=radius_scale, height_scale=height_scale)
+
+
+        self.body = p.loadURDF(os.path.join(directory, 'human_mesh', 'human_mesh.urdf'),
+                               basePosition=[-0.419, -0.864, 0.3048],
+                               baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id),
+                               physicsClientId=id)
+        print("loaded human URDF")
+
+
+        #load SMPL model built for python3
+
+        #load resting pose data
+        resting_post_filename = "/home/henry/data/resting_poses/"+self.posture+"/resting_pose_roll0_"+self.gender[0]+"_lay_set"+str(self.set_num)+"_"+str(self.data_ct_l)+"_of_"+str(self.data_ct_h)+"_none_stiff.npy"
+        resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
+        print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
+
+
+
+
+
+        capsule_angles = resting_pose_data[0].tolist()
+        root_joint_pos_list = resting_pose_data[1]
+        body_shape_list = resting_pose_data[2]
+
+        for shape_param in range(10):
+            m.betas[shape_param] = float(body_shape_list[shape_param])
+
+        human_rotation = 0.0#capsule_angles[2] #do not use this! It's already embedded in the pose
+        human_shiftSIDE = root_joint_pos_list[0]*2.58872
+        human_shiftUD = root_joint_pos_list[1]*2.58872
+
+        #print human_shiftUD, capsule_angles[3:6]
+
+        m.pose[0:3] = capsule_angles[0:3]
+        m.pose[3:6] = capsule_angles[6:9]
+        m.pose[6:9] = capsule_angles[9:12]
+        m.pose[9:12] = capsule_angles[12:15]
+        m.pose[12] = capsule_angles[15]
+        m.pose[15] = capsule_angles[16]
+        m.pose[18:21] = capsule_angles[17:20]
+        m.pose[21:24] = capsule_angles[20:23]
+        m.pose[24:27] = capsule_angles[23:26]
+        m.pose[27:30] = capsule_angles[26:29]
+        m.pose[36:39] = capsule_angles[29:32] # neck
+        m.pose[39:42] = capsule_angles[32:35]
+        m.pose[42:45] = capsule_angles[35:38]
+        m.pose[45:48] = capsule_angles[38:41]  # head
+        m.pose[48:51] = capsule_angles[41:44]
+        m.pose[51:54] = capsule_angles[44:47]
+        m.pose[55] = capsule_angles[47]
+        m.pose[58] = capsule_angles[48]
+        m.pose[60:63] = capsule_angles[49:52]
+        m.pose[63:66] = capsule_angles[52:55]
+
+        ## Write to an .obj file
+        outmesh_path = "../../data/person.obj"
+        with open(outmesh_path, 'w') as fp:
+            for v in m.r:
+                fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
+
+            for f in m.f + 1:  # Faces are 1-based, not 0-based in obj files
+                fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
+
+        mTransX, mTransY, mTransZ = mTrans
+
+        ROOT_ROT_X = 0
+        ROOT_ROT_Y = 0
+        ROOT_ROT_Z = human_rotation;
+
+        quaternion_ROOT = lib_flex_input_dict.quaternion_from_matrix(
+            lib_flex_input_dict.eulerAnglesToRotationMatrix([ROOT_ROT_X, ROOT_ROT_Y, ROOT_ROT_Z]))
+
+        # print m.pose
+        m.pose[0] = ROOT_ROT_X
+        m.pose[1] = ROOT_ROT_Y
+        m.pose[2] = ROOT_ROT_Z
+
+
+        # euler angles
+        # angle1 should flip about body
+        # angle2 should flip upside down, i.e. about head to toe axis
+        # angle3 should flip head to toe, i.e. about gravity axis
+
+        # get the starting height for a flat bed.
+        mJ_transformed = np.asarray(m.J_transformed)
+        joint_locs_trans_abs = []
+        for i in range(24):
+            joint_locs_trans_abs.append(list(mJ_transformed[i, :] - mJ_transformed[0, :]))
+
+
+
+
+
+        #super(HumanMesh, self).init(self.body, id, np_random, self.controllable_joint_indices)
+
+
+    def update_human_mesh(self):
+
+        mesh_data_folder = "/home/henry/data/resting_meshes/"+self.posture+"/roll0_"+self.gender[0]+"_lay_set"+str(self.set_num)+"_"+str(self.data_ct_l)+"_of_"+str(self.data_ct_h)+"_none_stiff/"
+        hv = np.load(mesh_data_folder+"hv.npy")#, allow_pickle = True, encoding='latin1')
+        hf = np.load(mesh_data_folder+"hf.npy")#, allow_pickle = True, encoding='latin1')
+
+        for sample_idx in range(1501, 1502):# (0, np.shape(mv)[0]):
+            human_verts = np.array(hv[sample_idx, :, :])/2.58872 #np.load(folder + "human_mesh_verts_py.npy")/2.58872
+            human_verts = np.concatenate((human_verts[:, 2:3],human_verts[:, 0:1],human_verts[:, 1:2]), axis = 1)
+
+            human_faces = np.array(hf[sample_idx, :, :]) #np.load(folder + "human_mesh_faces_py.npy")
+            human_faces = np.concatenate((np.array([[0, 1, 2], [0, 4, 1], [0, 5, 4], [0, 2, 132], [0, 235, 5], [0, 132, 235] ]), human_faces), axis = 0)
+            human_vf = [human_verts, human_faces]
+
+        outmesh_human_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/human_mesh/human.obj"
+        with open(outmesh_human_path, 'w') as fp:
+            for v_idx in range(human_verts.shape[0]):
+                fp.write('v %f %f %f\n' % (human_verts[v_idx, 0], human_verts[v_idx, 1], human_verts[v_idx, 2]))
+
+            for f_idx in range(human_faces.shape[0]):
+                fp.write('f %d %d %d\n' % (human_faces[f_idx, 0]+1, human_faces[f_idx, 1]+1, human_faces[f_idx, 2]+1))
+
+    def get_mesh_pos_orient(self, link, center_of_mass=False, convert_to_realworld=False):
+        # Get the 3D position and orientation (4D quaternion) of a specific link on the body
+        if link == self.base:
+            pos, orient = p.getBasePositionAndOrientation(self.body, physicsClientId=self.id)
+        else:
+            if not center_of_mass:
+                pos, orient = p.getLinkState(self.body, link, computeForwardKinematics=True, physicsClientId=self.id)[4:6]
+            else:
+                pos, orient = p.getLinkState(self.body, link, computeForwardKinematics=True, physicsClientId=self.id)[:2]
+        if convert_to_realworld:
+            return self.convert_to_realworld(pos, orient)
+        else:
+            return np.array(pos), np.array(orient)
+
+
 class Human(Agent):
     def __init__(self, controllable_joint_indices, controllable=False):
         super(Human, self).__init__()
+        self.human_type = "kinematic"
         self.controllable_joint_indices = controllable_joint_indices
         self.controllable = controllable
         self.right_pecs = 2
@@ -61,7 +234,7 @@ class Human(Agent):
         self.elbow_radius = 0.0
         self.shoulder_radius = 0.0
 
-    def init(self, human_creation, limits_model, static_human_base, impairment, gender, config, id, np_random, mass=None, radius_scale=1.0, height_scale=1.0):
+    def init(self, human_creation, limits_model, static_human_base, impairment, gender, config, id, np_random, mass=None, radius_scale=1.0, height_scale=1.0, directory = None):
         self.limits_model = limits_model
         self.arm_previous_valid_pose = {True: None, False: None}
         # Choose gender
