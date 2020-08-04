@@ -2,6 +2,8 @@ import os
 import numpy as np
 import pybullet as p
 from .agent import Agent
+from smpl_webuser3.serialization import load_model
+
 
 right_arm_joints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 left_arm_joints = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]
@@ -46,6 +48,8 @@ class HumanMesh(Agent):
         self.tremors = np.zeros(len(self.controllable_joint_indices))
         # Initialize human
 
+        self.id = id
+
         #self.body = human_creation.create_human(static=static_human_base, limit_scale=self.limit_scale, specular_color=[0.1, 0.1, 0.1], gender=self.gender, config=config, mass=mass, radius_scale=radius_scale, height_scale=height_scale)
 
 
@@ -63,13 +67,23 @@ class HumanMesh(Agent):
         resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
         print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
 
+        model_path = '/home/henry/git/SMPL_python_v.1.0.0/smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
+        m = load_model(model_path)
+
+        PERSON_SCALE = 50.0
+
+        # first get the offsets
+        DART_TO_FLEX_CONV = 2.5872
+        PERSON_SCALE = 50.0
+        mTransX = m.r[0, 0] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # X appears to move sideways
+        mTransY = m.r[0, 1] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # Y trans appears to move up in air
+        mTransZ = m.r[0, 2] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # Z trans appears to move forward
+        mTrans = [mTransX, mTransY, mTransZ]
 
 
-
-
-        capsule_angles = resting_pose_data[0].tolist()
-        root_joint_pos_list = resting_pose_data[1]
-        body_shape_list = resting_pose_data[2]
+        capsule_angles = resting_pose_data[self.data_ct_idx, 0].tolist()
+        root_joint_pos_list = resting_pose_data[self.data_ct_idx, 1]
+        body_shape_list = resting_pose_data[self.data_ct_idx, 2]
 
         for shape_param in range(10):
             m.betas[shape_param] = float(body_shape_list[shape_param])
@@ -101,23 +115,13 @@ class HumanMesh(Agent):
         m.pose[60:63] = capsule_angles[49:52]
         m.pose[63:66] = capsule_angles[52:55]
 
-        ## Write to an .obj file
-        outmesh_path = "../../data/person.obj"
-        with open(outmesh_path, 'w') as fp:
-            for v in m.r:
-                fp.write('v %f %f %f\n' % (v[0], v[1], v[2]))
-
-            for f in m.f + 1:  # Faces are 1-based, not 0-based in obj files
-                fp.write('f %d %d %d\n' % (f[0], f[1], f[2]))
 
         mTransX, mTransY, mTransZ = mTrans
 
         ROOT_ROT_X = 0
         ROOT_ROT_Y = 0
-        ROOT_ROT_Z = human_rotation;
+        ROOT_ROT_Z = human_rotation
 
-        quaternion_ROOT = lib_flex_input_dict.quaternion_from_matrix(
-            lib_flex_input_dict.eulerAnglesToRotationMatrix([ROOT_ROT_X, ROOT_ROT_Y, ROOT_ROT_Z]))
 
         # print m.pose
         m.pose[0] = ROOT_ROT_X
@@ -132,10 +136,11 @@ class HumanMesh(Agent):
 
         # get the starting height for a flat bed.
         mJ_transformed = np.asarray(m.J_transformed)
-        joint_locs_trans_abs = []
+        self.joint_locs_trans_abs = []
         for i in range(24):
-            joint_locs_trans_abs.append(list(mJ_transformed[i, :] - mJ_transformed[0, :]))
+            self.joint_locs_trans_abs.append(list(mJ_transformed[i, :] - mJ_transformed[0, :]))
 
+        self.m = m
 
 
 
@@ -166,18 +171,10 @@ class HumanMesh(Agent):
                 fp.write('f %d %d %d\n' % (human_faces[f_idx, 0]+1, human_faces[f_idx, 1]+1, human_faces[f_idx, 2]+1))
 
     def get_mesh_pos_orient(self, link, center_of_mass=False, convert_to_realworld=False):
-        # Get the 3D position and orientation (4D quaternion) of a specific link on the body
-        if link == self.base:
-            pos, orient = p.getBasePositionAndOrientation(self.body, physicsClientId=self.id)
-        else:
-            if not center_of_mass:
-                pos, orient = p.getLinkState(self.body, link, computeForwardKinematics=True, physicsClientId=self.id)[4:6]
-            else:
-                pos, orient = p.getLinkState(self.body, link, computeForwardKinematics=True, physicsClientId=self.id)[:2]
-        if convert_to_realworld:
-            return self.convert_to_realworld(pos, orient)
-        else:
-            return np.array(pos), np.array(orient)
+        pos = self.joint_locs_trans_abs[link]
+        orient = np.array([self.m.pose[link], self.m.pose[link+1], self.m.pose[link+2]])
+
+        return np.array(pos), np.array(orient)
 
 
 class Human(Agent):

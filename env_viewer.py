@@ -7,7 +7,8 @@ if sys.version_info < (3, 0):
     exit()
 
 parser = argparse.ArgumentParser(description='Assistive Gym Environment Viewer')
-parser.add_argument('--env', default='BedBathingMeshPR2-v1',
+#parser.add_argument('--env', default='BedBathingMeshPR2-v1',
+parser.add_argument('--env', default='BedBathingPR2-v1',
                     help='Environment to test (default: ScratchItchJaco-v0)')
 args = parser.parse_args()
 

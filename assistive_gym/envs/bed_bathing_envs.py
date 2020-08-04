@@ -10,7 +10,7 @@ robot_arm = 'left'
 human_controllable_joint_indices = human.right_arm_joints
 class BedBathingPR2Env(BedBathingEnv):
     def __init__(self):
-        super(BedBathingPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False))
+        super(BedBathingPR2Env, self).__init__(robot=PR2(robot_arm), human=Human(human_controllable_joint_indices, controllable=False), bed_type='default')
 
 class BedBathingMeshPR2Env(BedBathingEnv):
     def __init__(self):

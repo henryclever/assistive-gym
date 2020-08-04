@@ -32,6 +32,8 @@ class Agent:
         if indices is None:
             indices = self.all_joint_indices
         robot_joint_states = p.getJointStates(self.body, jointIndices=indices, physicsClientId=self.id)
+
+        #print (robot_joint_states, np.shape(robot_joint_states))
         return np.array([x[0] for x in robot_joint_states])
 
     def get_joint_angles_dict(self, indices=None):
