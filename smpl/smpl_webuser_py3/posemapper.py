@@ -16,11 +16,11 @@ Modules included:
   computes the joint-to-pose blend shape mapping given a mapping type as input
 
 '''
-try:
-    import sys
-    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
-except:
-    pass
+#try:
+#    import sys
+#    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+#except:
+#    pass
 import chumpy as ch
 import numpy as np
 import cv2

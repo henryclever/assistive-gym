@@ -20,7 +20,6 @@ Modules included:
   computes the blending of joint-influences for each vertex based on type of skinning
 
 '''
-
 import chumpy
 import lbs
 from posemapper import posemap

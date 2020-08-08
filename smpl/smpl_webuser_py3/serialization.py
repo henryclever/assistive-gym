@@ -23,11 +23,6 @@ Modules included:
 __all__ = ['load_model', 'save_model']
 
 import numpy as np
-try:
-    import sys
-    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
-except:
-    pass
 import pickle
 import chumpy as ch
 from chumpy.ch import MatVecMult
@@ -123,6 +118,7 @@ def ready_arguments(fname_or_dict):
 def load_model(fname_or_dict):
     dd = ready_arguments(fname_or_dict)
     
+    print("USING THIS SERIALIZATION")
     args = {
         'pose': dd['pose'],
         'v': dd['v_posed'],

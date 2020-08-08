@@ -2,7 +2,19 @@ import os
 import numpy as np
 import pybullet as p
 from .agent import Agent
-from smpl_webuser3.serialization import load_model
+
+
+
+import sys
+try:
+    sys.path.remove('/opt/ros/kinetic/lib/python2.7/dist-packages')
+except:
+    pass
+
+sys.path.insert(0, "../smpl/smpl_webuser_py3")
+
+from smpl.smpl_webuser_py3.serialization import load_model
+
 
 
 right_arm_joints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -68,7 +80,7 @@ class HumanMesh(Agent):
         resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
         print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
 
-        model_path = 'smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
+        model_path = '/home/henry/git/assistive-gym/smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
         m = load_model(model_path)
 
         PERSON_SCALE = 50.0
