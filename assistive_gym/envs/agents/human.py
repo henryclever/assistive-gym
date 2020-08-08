@@ -64,7 +64,7 @@ class HumanMesh(Agent):
         #load SMPL model built for python3
 
         #load resting pose data
-        resting_post_filename = "/home/henry/data/resting_poses/"+self.posture+"/resting_pose_roll0_"+self.gender[0]+"_lay_set"+str(self.set_num)+"_"+str(self.data_ct_l)+"_of_"+str(self.data_ct_h)+"_none_stiff.npy"
+        resting_post_filename = "../../data/resting_poses/"+self.posture+"/resting_pose_roll0_"+self.gender[0]+"_lay_set"+str(self.set_num)+"_"+str(self.data_ct_l)+"_of_"+str(self.data_ct_h)+"_none_stiff.npy"
         resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
         print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
 
