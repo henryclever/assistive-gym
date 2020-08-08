@@ -80,7 +80,7 @@ class HumanMesh(Agent):
         resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
         print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
 
-        model_path = '/home/henry/git/assistive-gym/smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
+        model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
         m = load_model(model_path)
 
         PERSON_SCALE = 50.0
