@@ -21,7 +21,8 @@ class Furniture(Agent):
             # # Initialize bed position
             # p.resetBasePositionAndOrientation(furniture, [-0.1, 0, 0], p.getQuaternionFromEuler([np.pi/2.0, 0, 0], physicsClientId=self.id), physicsClientId=self.id)
         elif furniture_type == 'bed_mesh':
-            furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.419, -0.864, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
+            #furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.419, -0.864, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
+            furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.45776, -0.98504, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
 
 
         elif furniture_type == 'table':

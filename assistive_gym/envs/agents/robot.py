@@ -111,7 +111,14 @@ class Robot(Agent):
         best_start_joint_poses = [None]*len(arms)
         iteration = 0
         # Save human joint states for later restoring
-        human_angles = human.get_joint_angles(human.controllable_joint_indices)
+
+        if self.flags['human_type'] == 'mesh':
+            human_angles = human.get_mesh_joint_angles(human.controllable_joint_indices)
+        else:
+            human_angles = human.get_joint_angles(human.controllable_joint_indices)
+
+
+
         while iteration < attempts or best_position is None:
             iteration += 1
             # Randomize base position and orientation

@@ -40,6 +40,8 @@ class BedBathingEnv(AssistiveEnv):
         info = {'total_force_on_human': self.total_force_on_human, 'task_success': int(self.task_success >= (self.total_target_count*self.config('task_success_threshold'))), 'action_robot_len': self.action_robot_len, 'action_human_len': self.action_human_len, 'obs_robot_len': self.obs_robot_len, 'obs_human_len': self.obs_human_len}
         done = False
 
+        print(self.tool.get_pos_orient(1)[0])
+
         return obs, reward, done, info
 
     def get_total_force(self):
@@ -85,9 +87,18 @@ class BedBathingEnv(AssistiveEnv):
         tool_pos, tool_orient = self.tool.get_pos_orient(1)
         tool_pos_real, tool_orient_real = self.robot.convert_to_realworld(tool_pos, tool_orient)
         robot_joint_angles = self.robot.get_joint_angles(self.robot.controllable_joint_indices)
-        shoulder_pos = self.human.get_pos_orient(self.human.right_shoulder)[0]
-        elbow_pos = self.human.get_pos_orient(self.human.right_elbow)[0]
-        wrist_pos = self.human.get_pos_orient(self.human.right_wrist)[0]
+
+        if self.human.human_type == 'kinematic':
+            shoulder_pos = self.human.get_pos_orient(self.human.right_shoulder)[0]
+            elbow_pos = self.human.get_pos_orient(self.human.right_elbow)[0]
+            wrist_pos = self.human.get_pos_orient(self.human.right_wrist)[0]
+        elif self.human.human_type == 'mesh':
+            shoulder_pos = self.human.get_mesh_pos_orient(self.human.right_shoulder)[0]
+            elbow_pos = self.human.get_mesh_pos_orient(self.human.right_elbow)[0]
+            wrist_pos = self.human.get_mesh_pos_orient(self.human.right_wrist)[0]
+
+
+
         shoulder_pos_real, _ = self.robot.convert_to_realworld(shoulder_pos)
         elbow_pos_real, _ = self.robot.convert_to_realworld(elbow_pos)
         wrist_pos_real, _ = self.robot.convert_to_realworld(wrist_pos)
@@ -230,6 +241,10 @@ class BedBathingEnv(AssistiveEnv):
 
 
         target_ee_pos = np.array([-0.6, 0.2, 1]) + self.np_random.uniform(-0.05, 0.05, size=3)
+
+        print('target ee orient', self.task, id)
+
+
         target_ee_orient = np.array(p.getQuaternionFromEuler(np.array(self.robot.toc_ee_orient_rpy[self.task]), physicsClientId=self.id))
         # Use TOC with JLWKI to find an optimal base position for the robot near the person
         base_position, _, _ = self.robot.position_robot_toc(self.task, 'left', [(target_ee_pos, target_ee_orient)], [(shoulder_pos, None), (elbow_pos, None), (wrist_pos, None)], self.human, step_sim=True, check_env_collisions=False)
@@ -268,20 +283,55 @@ class BedBathingEnv(AssistiveEnv):
         self.targets_pos_on_upperarm = self.util.capsule_points(p1=np.array([0, 0, 0]), p2=np.array([0, 0, -self.upperarm_length]), radius=self.upperarm_radius, distance_between_points=0.03)
         self.targets_pos_on_forearm = self.util.capsule_points(p1=np.array([0, 0, 0]), p2=np.array([0, 0, -self.forearm_length]), radius=self.forearm_radius, distance_between_points=0.03)
 
-        self.targets_upperarm = self.create_spheres(radius=0.01, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_upperarm), visual=True, collision=False, rgba=[0, 1, 1, 1])
-        self.targets_forearm = self.create_spheres(radius=0.01, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_forearm), visual=True, collision=False, rgba=[0, 1, 1, 1])
+        print(np.shape(self.targets_pos_on_forearm))
+        print(np.shape(self.targets_pos_on_upperarm))
+
+        for idx in range(np.shape(self.targets_pos_on_forearm)[0]):
+            self.targets_pos_on_forearm[idx][0] -= 0.5
+            self.targets_pos_on_forearm[idx][1] += 0.5
+            #self.targets_pos_on_forearm[idx][2] -= 0.5
+
+        for idx in range(np.shape(self.targets_pos_on_upperarm)[0]):
+            self.targets_pos_on_upperarm[idx][0] = 0.0
+            self.targets_pos_on_upperarm[idx][1] = 0.0
+            self.targets_pos_on_upperarm[idx][2] = 0.0
+
+        for i in range(24): #right now this is hacked to show markers at every joint rather than around the upper arm
+            pos, _ = self.human.get_mesh_pos_orient(i)
+            self.targets_pos_on_upperarm[i][0] = pos[0]
+            self.targets_pos_on_upperarm[i][1] = pos[1]
+            self.targets_pos_on_upperarm[i][2] = pos[2]
+
+
+        self.targets_upperarm = self.create_spheres(radius=0.05, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_upperarm), visual=True, collision=False, rgba=[1, 0.2, 0.2, 1])
+        self.targets_forearm = self.create_spheres(radius=0.01, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_forearm), visual=True, collision=False, rgba=[0, 1, 1, 0])
+
+        #print(self.targets_pos_on_forearm)
         self.total_target_count = len(self.targets_pos_on_upperarm) + len(self.targets_pos_on_forearm)
         self.update_targets()
 
     def update_targets(self):
-        upperarm_pos, upperarm_orient = self.human.get_pos_orient(self.upperarm)
+
+
+        if self.human.human_type == 'kinematic':
+            upperarm_pos, upperarm_orient = self.human.get_pos_orient(self.upperarm)
+        elif self.human.human_type == 'mesh':
+            #upperarm_pos, upperarm_orient = self.human.get_mesh_pos_orient(self.upperarm) ##### relative to upper arm! need to get this right.
+            upperarm_pos, upperarm_orient = self.human.get_mesh_pos_orient(0) ##### relative to upper arm! need to get this right.
+            #print(upperarm_pos)
+
         self.targets_pos_upperarm_world = []
         for target_pos_on_arm, target in zip(self.targets_pos_on_upperarm, self.targets_upperarm):
-            target_pos = np.array(p.multiplyTransforms(upperarm_pos, upperarm_orient, target_pos_on_arm, [0, 0, 0, 1], physicsClientId=self.id)[0])
+            #target_pos = np.array(p.multiplyTransforms(upperarm_pos, upperarm_orient, target_pos_on_arm, [0, 0, 0, 1], physicsClientId=self.id)[0])
+            target_pos = np.array(p.multiplyTransforms([0.0, 0.0, 0.3048], [0.0, 0.0, 0.0, 1.0], target_pos_on_arm, [0, 0, 0, 1], physicsClientId=self.id)[0])
             self.targets_pos_upperarm_world.append(target_pos)
             target.set_base_pos_orient(target_pos, [0, 0, 0, 1])
 
-        forearm_pos, forearm_orient = self.human.get_pos_orient(self.forearm)
+        if self.human.human_type == 'kinematic':
+            forearm_pos, forearm_orient = self.human.get_pos_orient(self.forearm)
+        elif self.human.human_type == 'mesh':
+            forearm_pos, forearm_orient = self.human.get_mesh_pos_orient(self.forearm)
+
         self.targets_pos_forearm_world = []
         for target_pos_on_arm, target in zip(self.targets_pos_on_forearm, self.targets_forearm):
             target_pos = np.array(p.multiplyTransforms(forearm_pos, forearm_orient, target_pos_on_arm, [0, 0, 0, 1], physicsClientId=self.id)[0])

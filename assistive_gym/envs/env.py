@@ -9,7 +9,7 @@ from keras.models import load_model
 
 from .util import Util
 from .human_creation import HumanCreation
-from .agents import agent, human, tool, furniture
+from .agents import agent, tool, furniture
 from .agents.agent import Agent
 from .agents.human import Human
 from .agents.tool import Tool
@@ -17,6 +17,8 @@ from .agents.furniture import Furniture
 
 class AssistiveEnv(gym.Env):
     def __init__(self, robot=None, human=None, bed_type='default', task=None, obs_robot_len=0, obs_human_len=0, time_step=0.02, frame_skip=5, render=False, gravity=-9.81, seed=1001):
+
+        print("bed type:", bed_type)
         self.task = task
         self.time_step = time_step
         self.frame_skip = frame_skip
@@ -68,9 +70,10 @@ class AssistiveEnv(gym.Env):
         return float(self.configp[self.task if section is None else section][tag])
 
     def reset(self):
+        print("resetting")
         p.resetSimulation(physicsClientId=self.id)
         # Configure camera position
-        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=-25, cameraPitch=-45, cameraTargetPosition=[-0.2, 0, 0.4], physicsClientId=self.id)
+        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=25, cameraPitch=-45, cameraTargetPosition=[-0.2, 0, 0.4], physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0, physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.id)
         p.setTimeStep(self.time_step, physicsClientId=self.id)
@@ -86,27 +89,34 @@ class AssistiveEnv(gym.Env):
     def build_assistive_env(self, furniture_type=None, fixed_robot_base=True, fixed_human_base=True, human_impairment='random', gender='random'):
         # Build plane, furniture, robot, human, etc. (just like world creation)
         # Load the ground plane
+
+
+        print("loading floor")
         plane = p.loadURDF(os.path.join(self.directory, 'plane', 'plane.urdf'), physicsClientId=self.id)
         self.plane.init(plane, self.id, self.np_random, indices=-1)
         # Disable rendering during creation
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0, physicsClientId=self.id)
+
+        print("robot init")
         # Create robot
         self.robot.init(self.directory, self.id, self.np_random, fixed_base=fixed_robot_base)
         self.agents.append(self.robot)
 
 
-
+        print("human init")
         # Create human
         self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=self.directory)
         if self.human.controllable:
             self.agents.append(self.human)
 
 
-        print('furniture type: ', furniture_type)
-
+        print('furniture init')
         # Create furniture (wheelchair, bed, or table)
         if furniture_type is not None:
             self.furniture.init(furniture_type, self.directory, self.id, self.np_random, wheelchair_mounted=self.robot.wheelchair_mounted)
+
+
+        return [self.robot, self.human, self.furniture]
 
     def init_env_variables(self):
         if len(self.action_space.low) == 1:
@@ -128,6 +138,8 @@ class AssistiveEnv(gym.Env):
         human_impairement in ['none', 'limits', 'weakness', 'tremor']
         gender in ['male', 'female']
         '''
+        print("creating human")
+
         self.human = Human(controllable_joint_indices, controllable=controllable)
         self.human.init(self.human_creation, self.human_limits_model, fixed_base, human_impairment, gender, None, self.id, self.np_random, mass=mass, radius_scale=radius_scale, height_scale=height_scale)
         if controllable:

@@ -54,7 +54,8 @@ class HumanMesh(Agent):
 
 
         self.body = p.loadURDF(os.path.join(directory, 'human_mesh', 'human_mesh.urdf'),
-                               basePosition=[-0.419, -0.864, 0.3048],
+                               #basePosition=[-0.419, -0.864, 0.3048],
+                               basePosition=[-0.45776, -0.98504, 0.3048],
                                baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id),
                                physicsClientId=id)
         print("loaded human URDF")
@@ -124,9 +125,9 @@ class HumanMesh(Agent):
 
 
         # print m.pose
-        m.pose[0] = ROOT_ROT_X
-        m.pose[1] = ROOT_ROT_Y
-        m.pose[2] = ROOT_ROT_Z
+        #m.pose[0] = ROOT_ROT_X
+        #m.pose[1] = ROOT_ROT_Y
+        #m.pose[2] = ROOT_ROT_Z
 
 
         # euler angles
@@ -135,13 +136,27 @@ class HumanMesh(Agent):
         # angle3 should flip head to toe, i.e. about gravity axis
 
         # get the starting height for a flat bed.
-        mJ_transformed = np.asarray(m.J_transformed)
+        mJ_transformed = np.asarray(m.J_transformed).astype(float)
+        mJ = np.asarray(m.J).astype(float)
+
+        #print(mJ_transformed[0, :])
+        #print(mJ)
+        #mJ_transformed[0, :] += np.array(root_joint_pos_list)
+        #mJ_transformed[0, :] += mTrans
+        #print(mTrans, 'mtrans')
+        #print(root_joint_pos_list)
+        #print(mJ_transformed[0, :])
+
+        #mTrans += np.array([0.0, 0.0, -0.0])
+
+
+
         self.joint_locs_trans_abs = []
         for i in range(24):
-            self.joint_locs_trans_abs.append(list(mJ_transformed[i, :] - mJ_transformed[0, :]))
+            self.joint_locs_trans_abs.append(list(mJ_transformed[i, :] +mTrans+np.array(root_joint_pos_list)))# mJ_transformed[0, :]))#))# + mTrans))
+            print(self.joint_locs_trans_abs[-1])
 
         self.m = m
-
 
 
 
@@ -172,9 +187,28 @@ class HumanMesh(Agent):
 
     def get_mesh_pos_orient(self, link, center_of_mass=False, convert_to_realworld=False):
         pos = self.joint_locs_trans_abs[link]
-        orient = np.array([self.m.pose[link], self.m.pose[link+1], self.m.pose[link+2]])
+        orient = self.quat_from_dir_cos_angles(np.array([self.m.pose[link], self.m.pose[link+1], self.m.pose[link+2]]))
 
         return np.array(pos), np.array(orient)
+
+    def quat_from_dir_cos_angles(self,theta):
+        angle = np.linalg.norm(theta)
+        normalized = theta / angle
+        angle = angle * 0.5
+        v_cos = np.cos(angle)
+        v_sin = np.sin(angle)
+        quat = np.array([v_cos, v_sin * normalized[0], v_sin * normalized[1], v_sin * normalized[2]])
+
+        return quat
+
+
+    def get_mesh_joint_angles(self, controllable_joint_indices):
+
+        mesh_joint_angles = []
+        for i in range(72):
+            mesh_joint_angles.append(float(self.m.pose[i]))
+        print('getting mesh joint angles')
+        return mesh_joint_angles
 
 
 class Human(Agent):
