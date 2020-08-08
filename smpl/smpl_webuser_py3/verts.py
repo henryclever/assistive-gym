@@ -9,26 +9,27 @@ For comments or questions, please email us at: smpl@tuebingen.mpg.de
 
 About this file:
 ================
-This file defines the basic skinning modules for the SMPL loader which 
+This file defines the basic skinning modules for the SMPL loader which
 defines the effect of bones and blendshapes on the vertices of the template mesh.
 
 Modules included:
-- verts_decorated: 
-  creates an instance of the SMPL model which inherits model attributes from another 
+- verts_decorated:
+  creates an instance of the SMPL model which inherits model attributes from another
   SMPL model.
 - verts_core: [overloaded function inherited by lbs.verts_core]
   computes the blending of joint-influences for each vertex based on type of skinning
 
 '''
+
 import chumpy
-import lbs
-from posemapper import posemap
+from .lbs import verts_core as lbs_verts_core
+from .posemapper import posemap
 import scipy.sparse as sp
 from chumpy.ch import MatVecMult
 
 def ischumpy(x): return hasattr(x, 'dterms')
 
-def verts_decorated(trans, pose, 
+def verts_decorated(trans, pose,
     v_template, J, weights, kintree_table, bs_style, f,
     bs_type=None, posedirs=None, betas=None, shapedirs=None, want_Jtr=False):
 
@@ -44,26 +45,26 @@ def verts_decorated(trans, pose,
         v_shaped = v + shapedirs.dot(betas)
     else:
         v_shaped = v
-        
+
     if posedirs is not None:
         v_posed = v_shaped + posedirs.dot(posemap(bs_type)(pose))
     else:
         v_posed = v_shaped
-        
+
     v = v_posed
-        
+
     if sp.issparse(J):
         regressor = J
-        J_tmpx = MatVecMult(regressor, v_shaped[:,0])        
-        J_tmpy = MatVecMult(regressor, v_shaped[:,1])        
-        J_tmpz = MatVecMult(regressor, v_shaped[:,2])        
-        J = chumpy.vstack((J_tmpx, J_tmpy, J_tmpz)).T            
-    else:    
+        J_tmpx = MatVecMult(regressor, v_shaped[:,0])
+        J_tmpy = MatVecMult(regressor, v_shaped[:,1])
+        J_tmpz = MatVecMult(regressor, v_shaped[:,2])
+        J = chumpy.vstack((J_tmpx, J_tmpy, J_tmpz)).T
+    else:
         assert(ischumpy(J))
-        
+
     assert(bs_style=='lbs')
-    result, Jtr = lbs.verts_core(pose, v, J, weights, kintree_table, want_Jtr=True, xp=chumpy)
-     
+    result, Jtr = verts_core(pose, v, J, weights, kintree_table, want_Jtr=True, xp=chumpy)
+
     tr = trans.reshape((1,3))
     result = result + tr
     Jtr = Jtr + tr
@@ -89,14 +90,17 @@ def verts_decorated(trans, pose,
     return result
 
 def verts_core(pose, v, J, weights, kintree_table, bs_style, want_Jtr=False, xp=chumpy):
-    
+
     if xp == chumpy:
         assert(hasattr(pose, 'dterms'))
         assert(hasattr(v, 'dterms'))
         assert(hasattr(J, 'dterms'))
         assert(hasattr(weights, 'dterms'))
-     
+
+    # print(bs_style, bs_style=='lbs')
     assert(bs_style=='lbs')
-    result = lbs.verts_core(pose, v, J, weights, kintree_table, want_Jtr, xp)
+    # print('Hello')
+    # exit()
+    result = lbs_verts_core(pose, v, J, weights, kintree_table, want_Jtr, xp)
 
     return result

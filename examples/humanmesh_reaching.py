@@ -242,14 +242,41 @@ if __name__ == '__main__':
 
     time_last = time.time()
 
-    for step_num in range(200):
+    def quat_rpy_add(quat, rpy):
+        new_rpy = p.getEulerFromQuaternion(quat, physicsClientId=env.id) + rpy
+        return p.getQuaternionFromEuler(new_rpy, physicsClientId=env.id)
 
+    pos, orient = robot.get_pos_orient(robot.left_end_effector)
+    pose_seq = [(pos + np.array([0.2, -0.2, -0.2]), orient)]
+    def append_from_index(pos_add, rpy_add=np.array([0, 0, 0]), index=-1):
+        pose_seq.append((pose_seq[index][0] + pos_add, quat_rpy_add(pose_seq[index][1], rpy_add)))
 
+    # Follow a circle around the original point
+    radius = 0.1
+    for theta in np.linspace(0, 4*np.pi, 100):
+        append_from_index(np.array([radius*np.cos(theta), radius*np.sin(theta), 0]), index=0)
+
+    # Reach four points with varying orientations
+    # append_from_index(np.array([0, 0.1, 0]), np.array([-np.pi/4.0, 0, 0]))
+    # append_from_index(np.array([0, -0.2, 0]), np.array([np.pi/2.0, 0, 0]))
+    # append_from_index(np.array([0.1, 0.1, 0]), np.array([-np.pi/4.0, np.pi/4.0, 0]))
+    # append_from_index(np.array([-0.2, 0, 0]), np.array([0, -np.pi/2.0, 0]))
+
+    target_joint_angles = robot.ik(robot.left_end_effector, pose_seq[0][0], pose_seq[0][1], ik_indices=robot.left_arm_ik_indices, max_iterations=1000)
+
+    for step_num in range(500):
         print('taking step', step_num, '  time: ', time.time()-time_last)
         time_last = time.time()
-        action = np.zeros(len(robot.controllable_joint_indices))
-        #actions[[1, 2, 4, 5, 7, 8, 10, 11]] = 1.0
-        env.take_step(action, gains=env.config('robot_gains'), forces=env.config('robot_forces'))
+        robot_joint_angles = robot.get_joint_angles(robot.left_arm_joint_indices)
+        if np.linalg.norm(target_joint_angles - robot_joint_angles) < 0.01 and len(pose_seq) > 1:
+            # Check if joint angles are close to the target, if so, select next target
+            del pose_seq[0]
+            target_joint_angles = robot.ik(robot.left_end_effector, pose_seq[0][0], pose_seq[0][1], ik_indices=robot.left_arm_ik_indices, max_iterations=1000, use_current_as_rest=True)
+        joint_action = (target_joint_angles - robot_joint_angles) * 10
+        env.take_step(joint_action, gains=env.config('robot_gains'), forces=env.config('robot_forces'))
+        pos, orient = robot.get_pos_orient(robot.left_end_effector)
+        print('End effector position error: %.2fcm' % (np.linalg.norm(pos - pose_seq[0][0])*100), 'Orientation error:', ['%.4f' % v for v in (orient - pose_seq[0][1])])
+        # print(np.linalg.norm(target_joint_angles - robot_joint_angles))
 
         tool_pos, tool_orient = env.tool.get_pos_orient(1)
         tool_pos_real, tool_orient_real = robot.convert_to_realworld(tool_pos, tool_orient)
