@@ -3,8 +3,11 @@ import numpy as np
 from assistive_gym.envs.env import AssistiveEnv
 from assistive_gym.envs.agents.pr2 import PR2
 from assistive_gym.envs.agents.agent import Agent
-import assistive_gym.envs.agents.human as h
+import assistive_gym.envs.agents.human_mesh as h
 import time as time
+from lib_update_mesh import LibUpdateMesh
+from lib_pose_est.pose_estimator import PoseEstimator
+
 #from gibson2.core.physics.scene import BuildingScene
 
 
@@ -12,103 +15,34 @@ class HumanMeshReaching():
     def __init__(self):
         pass
 
-    def update_mattress_mesh(self, dataset_info_dict):
-        print("****Updating Mattress and Pressure Mat Mesh****")
-        mesh_data_folder = "/home/henry/data/resting_meshes/"+dataset_info_dict['posture']+\
-                           "/roll0_"+dataset_info_dict['gender'][0]+\
-                           "_lay_set"+str(dataset_info_dict['set_num'])+\
-                           "_"+str(dataset_info_dict['data_ct'][1])+\
-                           "_of_"+str(dataset_info_dict['data_ct'][2])+"_none_stiff/"
-
-        mv = np.load(mesh_data_folder + "mv.npy")  # , allow_pickle = True, encoding='latin1')
-        mf = np.load(mesh_data_folder + "mf.npy")  # , allow_pickle = True, encoding='latin1')
-        bv = np.load(mesh_data_folder + "bv.npy", allow_pickle=True, encoding='latin1')
-        bf = np.load(mesh_data_folder + "bf.npy", allow_pickle=True, encoding='latin1')
-
-        for sample_idx in range( dataset_info_dict['data_ct'][0],  dataset_info_dict['data_ct'][0]+1):  # (0, np.shape(mv)[0]):
-            mattress_verts = np.array(mv[sample_idx, :, :]) / 2.58872  # np.load(folder + "mattress_verts_py.npy")/2.58872
-            mattress_verts = np.concatenate((mattress_verts[:, 2:3], mattress_verts[:, 0:1], mattress_verts[:, 1:2]),
-                                            axis=1)
-
-            mattress_faces = np.array(mf[sample_idx, :, :])  # np.load(folder + "mattress_faces_py.npy")
-            mattress_faces = np.concatenate((np.array([[0, 6054, 6055]]), mattress_faces), axis=0)
-            # mattress_vf = [mattress_verts, mattress_faces]
-
-            mat_blanket_verts = np.array(bv[sample_idx]) / 2.58872  # np.load(folder + "mat_blanket_verts_py.npy")/2.58872
-            mat_blanket_verts = np.concatenate(
-                (mat_blanket_verts[:, 2:3], mat_blanket_verts[:, 0:1], mat_blanket_verts[:, 1:2]), axis=1)
-            mat_blanket_faces = np.array(bf[sample_idx])  # np.load(folder + "mat_blanket_faces_py.npy")
-
-            pmat_faces = []
-            for i in range(np.shape(mat_blanket_faces)[0]):
-                if np.max(mat_blanket_faces[i, :]) < 2244:  # 2300:# < 10000:
-                    pmat_faces.append([mat_blanket_faces[i, 0], mat_blanket_faces[i, 2], mat_blanket_faces[i, 1]])
-
-                # elif np.max(mat_blanket_faces[i, :]) > 3000 and np.max(mat_blanket_faces[i, :])< 3100:  #
-                #    stagger = 0
-                #    pmat_faces.append([mat_blanket_faces[i, 0]+stagger, mat_blanket_faces[i, 2]+stagger, mat_blanket_faces[i, 1]+stagger])
-
-            pmat_verts = np.copy(mat_blanket_verts)[0:6000]
-            pmat_faces = np.array(pmat_faces)
-            pmat_faces = np.concatenate((np.array([[0, 69, 1], [0, 68, 69]]), pmat_faces), axis=0)
-
-            pmat_vf = [pmat_verts, pmat_faces]
-
-        outmesh_mattress_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_mattress.obj"
-        with open(outmesh_mattress_path, 'w') as fp:
-            for v_idx in range(mattress_verts.shape[0]):
-                fp.write('v %f %f %f\n' % (mattress_verts[v_idx, 0], mattress_verts[v_idx, 1], mattress_verts[v_idx, 2]))
-
-            for f_idx in range(mattress_faces.shape[0]):
-                fp.write('f %d %d %d\n' % (
-                mattress_faces[f_idx, 0] + 1, mattress_faces[f_idx, 1] + 1, mattress_faces[f_idx, 2] + 1))
-
-        outmesh_pmat_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_pmat.obj"
-        with open(outmesh_pmat_path, 'w') as fp:
-            for v_idx in range(pmat_verts.shape[0]):
-                fp.write('v %f %f %f\n' % (pmat_verts[v_idx, 0], pmat_verts[v_idx, 1], pmat_verts[v_idx, 2]))
-
-            for f_idx in range(pmat_faces.shape[0]):
-                fp.write('f %d %d %d\n' % (pmat_faces[f_idx, 0] + 1, pmat_faces[f_idx, 1] + 1, pmat_faces[f_idx, 2] + 1))
-
-
     def generate_targets(self):
         self.target_indices_to_ignore = []
         if human.gender == 'male':
-            self.upperarm, self.upperarm_length, self.upperarm_radius = human.right_shoulder, 0.279, 0.043
-            self.forearm, self.forearm_length, self.forearm_radius = human.right_elbow, 0.257, 0.033
+            self.upperarm, self.upperarm_length, self.upperarm_radius = human.right_shoulder, 0.279, 0.04
         else:
             self.upperarm, self.upperarm_length, self.upperarm_radius = human.right_shoulder, 0.264, 0.0355
-            self.forearm, self.forearm_length, self.forearm_radius = human.right_elbow, 0.234, 0.027
 
         self.targets_pos_on_upperarm = env.util.capsule_points(p1=np.array([0, 0, 0]), p2=np.array([0, 0, -self.upperarm_length]), radius=self.upperarm_radius, distance_between_points=0.03)
-        self.targets_pos_on_forearm = env.util.capsule_points(p1=np.array([0, 0, 0]), p2=np.array([0, 0, -self.forearm_length]), radius=self.forearm_radius, distance_between_points=0.03)
 
-        print(np.shape(self.targets_pos_on_forearm))
-        print(np.shape(self.targets_pos_on_upperarm))
-
-        for idx in range(np.shape(self.targets_pos_on_forearm)[0]):
-            self.targets_pos_on_forearm[idx][0] -= 0.5
-            self.targets_pos_on_forearm[idx][1] += 0.5
-            #self.targets_pos_on_forearm[idx][2] -= 0.5
-
-        for idx in range(np.shape(self.targets_pos_on_upperarm)[0]):
-            self.targets_pos_on_upperarm[idx][0] = 0.0
-            self.targets_pos_on_upperarm[idx][1] = 0.0
-            self.targets_pos_on_upperarm[idx][2] = 0.0
-
+        self.target_pos_global_joints = []
         for i in range(24): #right now this is hacked to show markers at every joint rather than around the upper arm
             pos, _ = human.get_mesh_pos_orient(i)
-            self.targets_pos_on_upperarm[i][0] = pos[0]
-            self.targets_pos_on_upperarm[i][1] = pos[1]
-            self.targets_pos_on_upperarm[i][2] = pos[2]
+            print(pos)
+            self.target_pos_global_joints.append(np.array(pos))
 
 
-        self.targets_upperarm = env.create_spheres(radius=0.05, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_upperarm), visual=True, collision=False, rgba=[1, 0.2, 0.2, 1])
-        self.targets_forearm = env.create_spheres(radius=0.01, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_forearm), visual=True, collision=False, rgba=[0, 1, 1, 0])
+        #for idx in range(np.shape(self.targets_pos_on_upperarm)[0]):
+        #    self.targets_pos_on_upperarm[idx][0] = 0.0
+        #    self.targets_pos_on_upperarm[idx][1] = 0.0
+        #    self.targets_pos_on_upperarm[idx][2] = 0.0
 
-        #print(self.targets_pos_on_forearm)
-        self.total_target_count = len(self.targets_pos_on_upperarm) + len(self.targets_pos_on_forearm)
+
+
+        self.targets_upperarm = env.create_spheres(radius=0.05, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.targets_pos_on_upperarm), visual=True, collision=False, rgba=[0.2, 0.6, 0.2, 1])
+        self.targets_joints = env.create_spheres(radius=0.05, mass=0.0, batch_positions=[[0, 0, 0]]*len(self.target_pos_global_joints), visual=True, collision=False, rgba=[1, 0.2, 0.2, 1])
+
+
+        self.total_target_count = len(self.targets_pos_on_upperarm) + len(self.target_pos_global_joints)
         self.update_targets()
 
     def update_targets(self):
@@ -125,13 +59,12 @@ class HumanMeshReaching():
             self.targets_pos_upperarm_world.append(target_pos)
             target.set_base_pos_orient(target_pos, [0, 0, 0, 1])
 
-        forearm_pos, forearm_orient = human.get_mesh_pos_orient(self.forearm)
-
-        self.targets_pos_forearm_world = []
-        for target_pos_on_arm, target in zip(self.targets_pos_on_forearm, self.targets_forearm):
-            target_pos = np.array(p.multiplyTransforms(forearm_pos, forearm_orient, target_pos_on_arm, [0, 0, 0, 1], physicsClientId=env.id)[0])
-            self.targets_pos_forearm_world.append(target_pos)
+        self.targets_pos_alljoints_world = []
+        for target_pos_global, target in zip(self.target_pos_global_joints, self.targets_joints):
+            target_pos = np.array(p.multiplyTransforms([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0], target_pos_global, [0, 0, 0, 1], physicsClientId=env.id)[0])
+            self.targets_pos_alljoints_world.append(target_pos)
             target.set_base_pos_orient(target_pos, [0, 0, 0, 1])
+
 
     def get_total_force(self):
         total_force_on_human = np.sum(robot.get_contact_points(human)[-1])
@@ -158,17 +91,19 @@ class HumanMeshReaching():
                 self.targets_upperarm = [t for i, t in enumerate(self.targets_upperarm) if i not in indices_to_delete]
                 self.targets_pos_upperarm_world = [t for i, t in enumerate(self.targets_pos_upperarm_world) if i not in indices_to_delete]
 
+
                 indices_to_delete = []
-                for i, (target_pos_world, target) in enumerate(zip(self.targets_pos_forearm_world, self.targets_forearm)):
+                for i, (target_pos_world, target) in enumerate(zip(self.targets_pos_alljoints_world, self.targets_joints)):
                     if np.linalg.norm(posB - target_pos_world) < 0.025:
                         # The robot made contact with a point on the person's arm
                         new_contact_points += 1
                         self.task_success += 1
                         target.set_base_pos_orient(self.np_random.uniform(1000, 2000, size=3), [0, 0, 0, 1])
                         indices_to_delete.append(i)
-                self.targets_pos_on_forearm = [t for i, t in enumerate(self.targets_pos_on_forearm) if i not in indices_to_delete]
-                self.targets_forearm = [t for i, t in enumerate(self.targets_forearm) if i not in indices_to_delete]
-                self.targets_pos_forearm_world = [t for i, t in enumerate(self.targets_pos_forearm_world) if i not in indices_to_delete]
+                self.target_pos_global_joints = [t for i, t in enumerate(self.target_pos_global_joints) if i not in indices_to_delete]
+                self.targets_joints = [t for i, t in enumerate(self.targets_joints) if i not in indices_to_delete]
+                self.targets_pos_alljoints_world = [t for i, t in enumerate(self.targets_pos_alljoints_world) if i not in indices_to_delete]
+
 
         return tool_force, tool_force_on_human, total_force_on_human, new_contact_points
 
@@ -179,29 +114,52 @@ if __name__ == '__main__':
 
     dataset_info_dict = {}
     dataset_info_dict['gender'] = 'female'
-    dataset_info_dict['data_ct'] = [1501, 2000, 2109]
+    dataset_info_dict['data_ct'] = [60, 2000, 2112] #57 OK
     dataset_info_dict['posture'] = 'general_supine'
-    dataset_info_dict['set_num'] = 14
+    dataset_info_dict['set_num'] = 10
+    dataset_info_dict['mesh_type'] = 'ground_truth'
     human = h.HumanMesh(dataset_info_dict)
 
+    dataset_info_dict_est = {}
+    dataset_info_dict_est['gender'] = 'female'
+    dataset_info_dict_est['data_ct'] = [60, 2000, 2112]
+    dataset_info_dict_est['posture'] = 'general_supine'
+    dataset_info_dict_est['set_num'] = 10
+    dataset_info_dict_est['mesh_type'] = 'estimate'
+    human_est = h.HumanMesh(dataset_info_dict_est)
+
+
+    PE = PoseEstimator(dataset_info_dict)
+    m, joint_locs_trans_abs = PE.estimate_pose()
+
+
+
+    #human.load_smpl_model(joint_locs_trans_abs)
+    #human_est.load_smpl_model(joint_locs_trans_abs)
+
+    human.assign_new_pose(m, joint_locs_trans_abs)
+    human_est.assign_new_pose(m, joint_locs_trans_abs)
 
     robot_arm = 'left'
     robot=PR2(robot_arm, human_type='mesh')
-
+    #[0.14420165 0.48038295 0.09955744]
 
     HMR = HumanMeshReaching()
 
 
-    if False:
-        HMR.update_mattress_mesh(dataset_info_dict)
-        human.update_human_mesh()
+    if True:
+        LUM = LibUpdateMesh(dataset_info_dict)
+        LUM.update_mattress_mesh()
+        LUM.update_gt_human_mesh()
+        #LUM.update_est_human_mesh(m, root_shift=root_shift)
+        PE.update_est_human_mesh()
 
 
-    env = AssistiveEnv(robot = robot, human = human, task='bed_bathing', bed_type='pressuresim', render=True)
+    env = AssistiveEnv(robot = robot, human = human, human_est=human_est, task='bed_bathing', bed_type='pressuresim', render=True)
     env.reset()
 
     print('building assistive env')
-    robot, human, furniture = env.build_assistive_env(furniture_type='bed_mesh', fixed_human_base=False)
+    robot, human, human_est, furniture = env.build_assistive_env(furniture_type='bed_mesh', fixed_human_base=False)
 
 
     furniture.set_friction(furniture.base, friction=5)
@@ -247,7 +205,16 @@ if __name__ == '__main__':
         return p.getQuaternionFromEuler(new_rpy, physicsClientId=env.id)
 
     pos, orient = robot.get_pos_orient(robot.left_end_effector)
-    pose_seq = [(pos + np.array([0.2, -0.2, -0.2]), orient)]
+
+    human_joint_loc = human.get_mesh_pos_orient(5)[0]
+    #human_joint_loc = pos # - np.array([0.2, -0.2, -0.2])
+    #r_knee_pos =
+
+
+    print('knee is close to', human_joint_loc)
+
+
+    pose_seq = [(human_joint_loc, orient)]
     def append_from_index(pos_add, rpy_add=np.array([0, 0, 0]), index=-1):
         pose_seq.append((pose_seq[index][0] + pos_add, quat_rpy_add(pose_seq[index][1], rpy_add)))
 
@@ -273,8 +240,13 @@ if __name__ == '__main__':
             del pose_seq[0]
             target_joint_angles = robot.ik(robot.left_end_effector, pose_seq[0][0], pose_seq[0][1], ik_indices=robot.left_arm_ik_indices, max_iterations=1000, use_current_as_rest=True)
         joint_action = (target_joint_angles - robot_joint_angles) * 10
+        #print('gains:', env.config('robot_gains'))
         env.take_step(joint_action, gains=env.config('robot_gains'), forces=env.config('robot_forces'))
+        #env.take_step(joint_action, gains=0.2, forces=env.config('robot_forces'))
         pos, orient = robot.get_pos_orient(robot.left_end_effector)
+
+        #print(pos, pose_seq[0][0])
+
         print('End effector position error: %.2fcm' % (np.linalg.norm(pos - pose_seq[0][0])*100), 'Orientation error:', ['%.4f' % v for v in (orient - pose_seq[0][1])])
         # print(np.linalg.norm(target_joint_angles - robot_joint_angles))
 
@@ -290,6 +262,8 @@ if __name__ == '__main__':
         elbow_pos_real, _ = robot.convert_to_realworld(elbow_pos)
         wrist_pos_real, _ = robot.convert_to_realworld(wrist_pos)
         tool_force, tool_force_on_human, total_force_on_human, new_contact_points = HMR.get_total_force()
+
+        print(tool_force)
 
         robot_obs = np.concatenate(
             [tool_pos_real, tool_orient_real, robot_joint_angles, shoulder_pos_real, elbow_pos_real, wrist_pos_real,

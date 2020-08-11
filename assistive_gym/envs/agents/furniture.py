@@ -21,8 +21,11 @@ class Furniture(Agent):
             # # Initialize bed position
             # p.resetBasePositionAndOrientation(furniture, [-0.1, 0, 0], p.getQuaternionFromEuler([np.pi/2.0, 0, 0], physicsClientId=self.id), physicsClientId=self.id)
         elif furniture_type == 'bed_mesh':
+            pmat_start_x_border = -0.0254 * 3
+            pmat_start_y_border = -0.0254 * 2.5
             #furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.419, -0.864, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
-            furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.45776, -0.98504, 0.3048], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
+            #furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[-0.45776, -0.98504, 0.3048+0.0254], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
+            furniture = p.loadURDF(os.path.join(directory, 'bed_mesh', 'bed_mesh.urdf'), basePosition=[pmat_start_x_border, pmat_start_y_border, 0.3048+0.075], baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id), physicsClientId=id)
 
 
         elif furniture_type == 'table':

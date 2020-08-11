@@ -4,7 +4,8 @@ from .agents.pr2 import PR2
 from .agents.baxter import Baxter
 from .agents.sawyer import Sawyer
 from .agents.jaco import Jaco
-from .agents.human import Human, HumanMesh
+from .agents.human import Human
+from .agents.human_mesh import HumanMesh
 
 robot_arm = 'left'
 human_controllable_joint_indices = human.right_arm_joints
