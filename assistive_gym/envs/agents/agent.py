@@ -92,14 +92,23 @@ class Agent:
             cp = p.getContactPoints(bodyA=self.body, physicsClientId=self.id)
         else:
             cp = p.getContactPoints(bodyA=self.body, bodyB=agentB.body, physicsClientId=self.id)
+
         if cp is None:
             return [], [], [], [], []
         linkA = [c[3] for c in cp]
         linkB = [c[4] for c in cp]
         posA = [c[5] for c in cp]
         posB = [c[6] for c in cp]
+        normal = [c[7] for c in cp]
         force = [c[9] for c in cp]
-        return linkA, linkB, posA, posB, force
+
+        #ct = 0
+        #for c in cp:
+        #    print ("contact point:", ct, c)
+
+         #   ct += 1
+
+        return linkA, linkB, posA, posB, normal, force
 
     def get_closest_points(self, agentB, distance=4.0):
         cp = p.getClosestPoints(bodyA=self.body, bodyB=agentB.body, distance=distance, physicsClientId=self.id)
@@ -109,6 +118,7 @@ class Agent:
         posB = [c[6] for c in cp]
         contact_distance = [c[8] for c in cp]
         return linkA, linkB, posA, posB, contact_distance
+
 
     def get_force_torque_sensor(self, joint):
         return np.array(p.getJointState(self.body, joint, physicsClientId=self.id)[2])

@@ -64,19 +64,36 @@ class HumanMesh(Agent):
 
         self.id = id
 
-        pmat_start_x_border = -0.0254*3
-        pmat_start_y_border = -0.0254*2.5
+        pmat_start_x_border = -0.0254 * 3
+        pmat_start_y_border = -0.0254 * 2.5
+        shift_x = pmat_start_x_border - 0.45775
+        shift_y = pmat_start_y_border - 0.98504
 
         #self.body = human_creation.create_human(static=static_human_base, limit_scale=self.limit_scale, specular_color=[0.1, 0.1, 0.1], gender=self.gender, config=config, mass=mass, radius_scale=radius_scale, height_scale=height_scale)
 
         if self.mesh_type == 'ground_truth':
-            self.body = p.loadURDF(os.path.join(directory, 'human_mesh', 'human_mesh.urdf'),
-                                   #basePosition=[-0.419, -0.864, 0.3048],
-                                   #basePosition=[-0.45776, -0.98504, 0.3048+0.0254],
-                                   basePosition=[pmat_start_x_border, pmat_start_y_border, 0.3048+0.075],
-                                   baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id),
-                                   physicsClientId=id)
-            print("loaded human URDF")
+            #self.body = p.loadURDF(os.path.join(directory, 'human_mesh', 'human_mesh.urdf'),
+            #                       #basePosition=[-0.419, -0.864, 0.3048],
+            #                       #basePosition=[-0.45776, -0.98504, 0.3048+0.0254],
+            #                       basePosition=[shift_x, shift_y, 0.3048+0.075],
+            #                       baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id),
+            #                       physicsClientId=id)
+
+
+            print("loaded human URDF", directory)
+            human_visual = p.createVisualShape(shapeType=p.GEOM_MESH,
+                                               fileName=os.path.join(directory, 'human_mesh','human.obj'),
+                                               rgbaColor=[0.2, 0.2, 1.0, 1], specularColor=[0.2, 0.2, 0.2],
+                                               meshScale=[1.0, 1.0, 1.0], physicsClientId=id)
+            #
+            human_collision = p.createCollisionShape(shapeType=p.GEOM_MESH,
+                                               fileName=os.path.join(directory, 'human_mesh','human_vhacd.obj'),
+                                               meshScale=[1.0, 1.0, 1.0], flags=p.GEOM_FORCE_CONCAVE_TRIMESH,
+                                               physicsClientId=id)
+            self.body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=human_collision,
+                                          baseVisualShapeIndex=human_visual, basePosition=[shift_x, shift_y, 0.3048+0.075],
+                                          useMaximalCoordinates=True, physicsClientId=id)
+
 
 
         elif self.mesh_type == 'estimate':
@@ -89,96 +106,19 @@ class HumanMesh(Agent):
 
 
 
-    def load_smpl_model(self, joint_locs_trans_abs):
-
-        #load SMPL model built for python3
-        #load resting pose data
-        resting_post_filename = "resting_pose_roll0_"+self.gender[0]+"_lay_set"+str(self.set_num)+"_"+str(self.data_ct_l)+"_of_"+str(self.data_ct_h)+"_none_stiff.npy"
-        resting_pose_data = np.load(resting_post_filename, allow_pickle = True, encoding='latin1')
-        print (np.shape(resting_pose_data), np.shape(resting_pose_data[0, 0]), np.shape(resting_pose_data[0, 1]), np.shape(resting_pose_data[0, 2]), np.shape(resting_pose_data[0, 3]))
-
-        model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
-        m = load_model(model_path)
-
-        # first get the offsets
-        DART_TO_FLEX_CONV = 2.58872
-        PERSON_SCALE = 50.0
-        mTransX = m.r[0, 0] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # X appears to move sideways
-        mTransY = m.r[0, 1] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # Y trans appears to move up in air
-        mTransZ = m.r[0, 2] * DART_TO_FLEX_CONV / (PERSON_SCALE * 0.1)  # Z trans appears to move forward
-        mTrans = [mTransX, mTransY, mTransZ]
-
-
-        capsule_angles = resting_pose_data[self.data_ct_idx, 0].tolist()
-        root_joint_pos_list = resting_pose_data[self.data_ct_idx, 1]
-        body_shape_list = resting_pose_data[self.data_ct_idx, 2]
-
-        for shape_param in range(10):
-            m.betas[shape_param] = float(body_shape_list[shape_param])
-
-        m.pose[0:3] = capsule_angles[0:3]
-        m.pose[3:6] = capsule_angles[6:9]
-        m.pose[6:9] = capsule_angles[9:12]
-        m.pose[9:12] = capsule_angles[12:15]
-        m.pose[12] = capsule_angles[15]
-        m.pose[15] = capsule_angles[16]
-        m.pose[18:21] = capsule_angles[17:20]
-        m.pose[21:24] = capsule_angles[20:23]
-        m.pose[24:27] = capsule_angles[23:26]
-        m.pose[27:30] = capsule_angles[26:29]
-        m.pose[36:39] = capsule_angles[29:32] # neck
-        m.pose[39:42] = capsule_angles[32:35]
-        m.pose[42:45] = capsule_angles[35:38]
-        m.pose[45:48] = capsule_angles[38:41]  # head
-        m.pose[48:51] = capsule_angles[41:44]
-        m.pose[51:54] = capsule_angles[44:47]
-        m.pose[55] = capsule_angles[47]
-        m.pose[58] = capsule_angles[48]
-        m.pose[60:63] = capsule_angles[49:52]
-        m.pose[63:66] = capsule_angles[52:55]
-
-        # euler angles
-        # angle1 should flip about body
-        # angle2 should flip upside down, i.e. about head to toe axis
-        # angle3 should flip head to toe, i.e. about gravity axis
-
-        # get the starting height for a flat bed.
-        mJ_transformed = np.asarray(m.J_transformed).astype(float)
-        mJ = np.asarray(m.J).astype(float)
-
-        #print(mJ_transformed[0, :])
-        #print(mJ)
-        #mJ_transformed[0, :] += np.array(root_joint_pos_list)
-        #mJ_transformed[0, :] += mTrans
-        print(mTrans, 'mtrans')
-        print(root_joint_pos_list)
-        print(mJ_transformed[0, :])
-
-        #mTrans += np.array([0.0, 0.0, -0.0])
-
-
-
 
     def assign_new_pose(self, m, joint_locs_trans_abs):
 
         legacy_x_shift = -0.286 + 0.0143
         legacy_y_shift = -0.286 + 0.0143
-
-        bed_leg_ht = 0.3048
-        mattress_ht = 0.2032
         pmat_ht = 0.075
 
 
         self.joint_locs_trans_abs = []
-        self.joint_locs_trans_abs2 = []
 
         for i in range(24):
-            #self.joint_locs_trans_abs.append(list(mJ_transformed[i, :] +mTrans+np.array(root_joint_pos_list)+np.array([0.45776, 0.98504, 0.3048])))# mJ_transformed[0, :]))#))# + mTrans))
-
-            to_append = np.array(joint_locs_trans_abs[i]) + np.array([legacy_x_shift, legacy_y_shift, bed_leg_ht + mattress_ht + pmat_ht])
-            self.joint_locs_trans_abs.append(to_append[0])
-
-            #print('orig:', self.joint_locs_trans_abs[-1], '   proposed:',self.joint_locs_trans_abs2[-1])
+            to_append = np.array(joint_locs_trans_abs[i]) + np.array([legacy_x_shift, legacy_y_shift, pmat_ht])
+            self.joint_locs_trans_abs.append(to_append)
 
         self.m = m
 

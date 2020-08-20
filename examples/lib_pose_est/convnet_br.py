@@ -36,7 +36,7 @@ class CNN(nn.Module):
         #############################################################################
         #print mat_size
         self.loss_vector_type = loss_vector_type
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        #print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
 
         self.count = 0
 
@@ -139,7 +139,7 @@ class CNN(nn.Module):
         #self.unet = UNet(n_classes=1,n_channels=1, fc_out_size=out_size, bilinear=False)
 
 
-        print('Out size:', out_size)
+        #print('Out size:', out_size)
 
         if False:#torch.cuda.is_available():
             self.GPU = True
@@ -212,7 +212,7 @@ class CNN(nn.Module):
             self.meshDepthLib = MeshDepthLib(loss_vector_type=self.loss_vector_type,
                                              batch_size=images.size(0), use_cuda = self.GPU, verts_list = self.verts_list)
 
-        print("ConvNet input size: ", images.size())
+        #print("ConvNet input size: ", images.size())
 
 
         if CTRL_PNL['CNN'] == "original":
@@ -269,8 +269,8 @@ class CNN(nn.Module):
 
         elif CTRL_PNL['CNN'] == "resnetfcn":
             scores1 = self.resnet_fcn(images)['out']
-            print(scores1)
-            print(scores1.shape)
+            #print(scores1)
+            #print(scores1.shape)
 
             #for i in range(4):
             #    newmodel = torch.nn.Sequential(*(list(self.FCN_recon.children())[i:i+1]))
@@ -562,6 +562,8 @@ class CNN(nn.Module):
         OUTPUT_DICT['root_shift_gt'] = root_shift.clone().detach().cpu().numpy()
 
         targets_est_detached = torch.Tensor(targets_est.clone().detach().cpu().numpy()).type(self.dtype)
+        OUTPUT_DICT['targets_est_np'] = np.array(targets_est.clone().detach().cpu().numpy())
+
         synth_joint_addressed = [3, 15, 4, 5, 7, 8, 18, 19, 20, 21]
         for real_joint in range(10):
             verts_offset[:, real_joint, :] = verts_offset[:, real_joint, :] - targets_est_detached[:, synth_joint_addressed[real_joint], :]

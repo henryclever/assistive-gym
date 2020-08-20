@@ -278,3 +278,124 @@ class KinematicsLib():
         euler_angles = torch.stack([x, y, z]).permute(1, 2, 0)
         return euler_angles
 
+    def eulerAnglesToQuaternion(self, theta):
+        R_x = np.array([[1, 0, 0],
+                        [0, math.cos(theta[0]), -math.sin(theta[0])],
+                        [0, math.sin(theta[0]), math.cos(theta[0])]
+                        ])
+
+        R_y = np.array([[math.cos(theta[1]), 0, math.sin(theta[1])],
+                        [0, 1, 0],
+                        [-math.sin(theta[1]), 0, math.cos(theta[1])]
+                        ])
+
+        R_z = np.array([[math.cos(theta[2]), -math.sin(theta[2]), 0],
+                        [math.sin(theta[2]), math.cos(theta[2]), 0],
+                        [0, 0, 1]
+                        ])
+
+        matrix = np.dot(R_z, np.dot(R_y, R_x))
+        M = np.array(matrix, dtype=np.float64, copy=False)[:4, :4]
+
+        m00 = M[0, 0]
+        m01 = M[0, 1]
+        m02 = M[0, 2]
+        m10 = M[1, 0]
+        m11 = M[1, 1]
+        m12 = M[1, 2]
+        m20 = M[2, 0]
+        m21 = M[2, 1]
+        m22 = M[2, 2]
+        # symmetric matrix K
+        K = np.array([[m00 - m11 - m22, 0.0, 0.0, 0.0],
+                      [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
+                      [m02 + m20, m12 + m21, m22 - m00 - m11, 0.0],
+                      [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22]])
+        K /= 3.0
+        # quaternion is eigenvector of K that corresponds to largest eigenvalue
+        w, V = np.linalg.eigh(K)
+        q = V[[3, 0, 1, 2], np.argmax(w)]
+        if q[0] < 0.0:
+            np.negative(q, q)
+
+        return q
+
+    def eulerAnglesToRotationMatrix(self, theta):
+        R_x = np.array([[1, 0, 0],
+                        [0, math.cos(theta[0]), -math.sin(theta[0])],
+                        [0, math.sin(theta[0]), math.cos(theta[0])]
+                        ])
+
+        R_y = np.array([[math.cos(theta[1]), 0, math.sin(theta[1])],
+                        [0, 1, 0],
+                        [-math.sin(theta[1]), 0, math.cos(theta[1])]
+                        ])
+
+        R_z = np.array([[math.cos(theta[2]), -math.sin(theta[2]), 0],
+                        [math.sin(theta[2]), math.cos(theta[2]), 0],
+                        [0, 0, 1]
+                        ])
+
+        R = np.dot(R_z, np.dot(R_y, R_x))
+
+        return R
+
+    def ZXYeulerAnglesToRotationMatrix(self, theta):  # ZXY euler angles
+        R_x = np.array([[1, 0, 0],
+                        [0, math.cos(theta[0]), math.sin(theta[0])],
+                        [0, -math.sin(theta[0]), math.cos(theta[0])]
+                        ])
+
+        R_y = np.array([[math.cos(theta[1]), 0, math.sin(theta[1])],
+                        [0, 1, 0],
+                        [-math.sin(theta[1]), 0, math.cos(theta[1])]
+                        ])
+
+        R_z = np.array([[math.cos(theta[2]), -math.sin(theta[2]), 0],
+                        [math.sin(theta[2]), math.cos(theta[2]), 0],
+                        [0, 0, 1]
+                        ])
+
+        R = np.dot(R_z, np.dot(R_x, R_y))
+
+        return R
+
+    def quaternionToEulerAngles(self, Q):
+        Q = np.array(Q)
+        R = np.array([[1-2*(Q[2]*Q[2]+Q[3]*Q[3]),       2*(Q[1]*Q[2] - Q[0]*Q[3]),       2*(Q[0]*Q[2] + Q[1]*Q[3])],
+                     [2*(Q[1]*Q[2] + Q[0]*Q[3]),        1-2*(Q[1]*Q[1]+Q[3]*Q[3]),       2*(Q[2]*Q[3] - Q[0]*Q[1])],
+                     [2*(Q[1]*Q[3] - Q[0]*Q[2]),        2*(Q[0]*Q[1] + Q[2]*Q[3]),      1-2*(Q[1]*Q[1]+Q[2]*Q[2])]])
+
+        assert (self.isRotationMatrix(R))
+
+        sy = math.sqrt(R[0, 0] * R[0, 0] + R[1, 0] * R[1, 0])
+
+        singular = sy < 1e-6
+
+        if not singular:
+            x = math.atan2(R[2, 1], R[2, 2])
+            y = math.atan2(-R[2, 0], sy)
+            z = math.atan2(R[1, 0], R[0, 0])
+        else:
+            x = math.atan2(-R[1, 2], R[1, 1])
+            y = math.atan2(-R[2, 0], sy)
+            z = 0
+
+        return np.array([x, y, z])
+
+    def quaternionToRotationMatrix(self, Q):
+        Q = np.array(Q)
+        R = np.array([[1-2*(Q[2]*Q[2]+Q[3]*Q[3]),       2*(Q[1]*Q[2] - Q[0]*Q[3]),       2*(Q[0]*Q[2] + Q[1]*Q[3])],
+                     [2*(Q[1]*Q[2] + Q[0]*Q[3]),        1-2*(Q[1]*Q[1]+Q[3]*Q[3]),       2*(Q[2]*Q[3] - Q[0]*Q[1])],
+                     [2*(Q[1]*Q[3] - Q[0]*Q[2]),        2*(Q[0]*Q[1] + Q[2]*Q[3]),      1-2*(Q[1]*Q[1]+Q[2]*Q[2])]])
+
+        assert (self.isRotationMatrix(R))
+        return R
+
+
+    def isRotationMatrix(self, R):
+        Rt = np.transpose(R)
+        shouldBeIdentity = np.dot(Rt, R)
+        I = np.identity(3, dtype=R.dtype)
+        n = np.linalg.norm(I - shouldBeIdentity)
+        return n < 1e-6

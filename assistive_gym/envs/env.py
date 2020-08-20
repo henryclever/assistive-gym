@@ -75,7 +75,7 @@ class AssistiveEnv(gym.Env):
         p.resetSimulation(physicsClientId=self.id)
         # Configure camera position
         #p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=25, cameraPitch=-45, cameraTargetPosition=[-0.2, 0, 0.4], physicsClientId=self.id)
-        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=25, cameraPitch=-45, cameraTargetPosition=[-0.2+0.45776, 0.98504, 0.4], physicsClientId=self.id)
+        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=210, cameraPitch=-45, cameraTargetPosition=[-0.2, 0.0, 0.4], physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0, physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.id)
         p.setTimeStep(self.time_step, physicsClientId=self.id)
@@ -280,6 +280,34 @@ class AssistiveEnv(gym.Env):
         sphere = Agent()
         sphere.init(body, self.id, self.np_random, indices=-1)
         return sphere
+
+
+    def create_surface_normal(self, pos, orient, rgba = [0.1, 0.9, 0.15, 1]):
+        cylinder_collision = -1
+        cylinder_visual = p.createVisualShape(shapeType=p.GEOM_CYLINDER, radius = 0.04, length = 0.01, rgbaColor=rgba, physicsClientId=self.id)
+        cyl_body = p.createMultiBody(baseMass=0.0, baseCollisionShapeIndex=cylinder_collision,
+                                 baseVisualShapeIndex=cylinder_visual, basePosition=pos, baseOrientation=orient,
+                                 useMaximalCoordinates=False, physicsClientId=self.id)
+
+        arrow_collision = -1
+        arrow_visual = p.createVisualShape(shapeType=p.GEOM_MESH, meshScale=[0.1,0.1,0.1], rgbaColor=rgba, physicsClientId=self.id,
+                                           fileName='../assistive_gym/envs/assets/basic_objects/sun_dial_arrow.obj')
+        arrow_body = p.createMultiBody(baseMass=0.0, baseCollisionShapeIndex=arrow_collision,
+                                 baseVisualShapeIndex=arrow_visual, basePosition=pos, baseOrientation=orient,
+                                 useMaximalCoordinates=False, physicsClientId=self.id)
+
+        icons = []
+
+        cylinder = Agent()
+        cylinder.init(cyl_body, self.id, self.np_random, indices=-1)
+        icons.append(cylinder)
+
+        arrow = Agent()
+        arrow.init(arrow_body, self.id, self.np_random, indices=-1)
+        icons.append(arrow)
+
+
+        return icons
 
     def create_spheres(self, radius=0.01, mass=0.0, batch_positions=[[0, 0, 0]], visual=True, collision=True, rgba=[0, 1, 1, 1]):
         sphere_collision = p.createCollisionShape(shapeType=p.GEOM_SPHERE, radius=radius, physicsClientId=self.id) if collision else -1

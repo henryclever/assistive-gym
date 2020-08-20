@@ -218,7 +218,6 @@ class PoseEstimator():
         else:
             self.verts_list = [1325, 336, 1032, 4515, 1374, 4848, 1739, 5209, 1960, 5423]
 
-        print(self.CTRL_PNL['num_epochs'], 'NUM EPOCHS!')
         # Entire pressure dataset with coordinates in world frame
 
 
@@ -275,8 +274,6 @@ class PoseEstimator():
             self.depth_images_out_unet = None
 
 
-        print(np.shape(self.test_x_flat))
-
         test_xa = PreprocessingLib().preprocessing_create_pressure_angle_stack(self.test_x_flat,
                                                                                 self.mat_size,
                                                                                 self.CTRL_PNL)
@@ -323,8 +320,8 @@ class PoseEstimator():
         self.test_y_tensor = torch.Tensor(test_y_flat)
 
 
-        print(self.test_x_tensor.shape, 'Input testing tensor shape')
-        print(self.test_y_tensor.shape, 'Output testing tensor shape')
+        #print(self.test_x_tensor.shape, 'Input testing tensor shape')
+        #print(self.test_y_tensor.shape, 'Output testing tensor shape')
 
 
         self.init_convnet_test()
@@ -333,11 +330,6 @@ class PoseEstimator():
 
 
     def init_convnet_test(self):
-
-        print(self.test_x_tensor.size(), self.test_y_tensor.size())
-        #self.test_x_tensor = self.test_x_tensor[476:, :, :, :]
-        #self.test_y_tensor = self.test_y_tensor[476:, :]
-        print(self.test_x_tensor.size(), self.test_y_tensor.size())
 
         #self.test_x_tensor = self.test_x_tensor.unsqueeze(1)
         self.test_dataset = torch.utils.data.TensorDataset(self.test_x_tensor, self.test_y_tensor)
@@ -363,7 +355,7 @@ class PoseEstimator():
             for s in list(p.size()):
                 nn = nn * s
             pp += nn
-        print('LOADED. num params: ', pp)
+        #print('LOADED. num params: ', pp)
 
 
         # Run model on GPU if available
@@ -377,12 +369,6 @@ class PoseEstimator():
         if self.model2 is not None:
             self.model2 = self.model2.eval()
 
-
-        # test the model one epoch at a time
-        #for epoch in range(1):#, self.CTRL_PNL['num_epochs'] + 1):
-        #    self.t1 = time.time()
-        #    #self.val_convnet_special(epoch)
-        #    self.val_convnet_general(epoch)
 
 
     def estimate_pose(self):
@@ -432,7 +418,7 @@ class PoseEstimator():
                 self.CTRL_PNL['adjust_ang_from_est'] = False
                 self.CTRL_PNL['recon_map_labels'] = False
 
-                print(self.CTRL_PNL['num_input_channels_batch0'], batch[0].size(), 'batch[0] for mod1')
+                #print(self.CTRL_PNL['num_input_channels_batch0'], batch[0].size(), 'batch[0] for mod1')
 
 
                 if self.CTRL_PNL['depth_in'] == True:
@@ -496,7 +482,7 @@ class PoseEstimator():
                     if self.CTRL_PNL['pmr'] == True:
                         self.CTRL_PNL['num_input_channels_batch0'] += 2
 
-                    print(self.CTRL_PNL['num_input_channels_batch0'], batch_cor[0].size(), 'batch[0] for mod2')
+                    #print(self.CTRL_PNL['num_input_channels_batch0'], batch_cor[0].size(), 'batch[0] for mod2')
                     self.CTRL_PNL['align_procr'] = False
 
                     scores, INPUT_DICT, OUTPUT_DICT = UnpackBatchLib().unpack_batch(batch_cor, is_training=False,
@@ -510,19 +496,11 @@ class PoseEstimator():
 
 
 
-
-                #self.smpl_verts = np.concatenate((smpl_verts[:, 1:2] - 0.286 + 0.0143, smpl_verts[:, 0:1] - 0.286 + 0.0143,
-                                             #- smpl_verts[:, 2:3]), axis=1)
-
-
-
                 q = OUTPUT_DICT['batch_mdm_est'].data.cpu().numpy().reshape(OUTPUT_DICT['batch_mdm_est'].size()[0], 64, 27) * -1
                 q = np.mean(q, axis=0)
 
                 camera_point = [1.09898028, 0.46441343, -CAM_BED_DIST]
 
-                bedangle = 0.0
-                # print smpl_verts
 
                 RESULTS_DICT['betas'].append(OUTPUT_DICT['batch_betas_est_post_clip'].cpu().numpy()[0])
                 #print(RESULTS_DICT['betas'][-1], "BETAS")
@@ -540,55 +518,29 @@ class PoseEstimator():
                 for angle in range(angles_gt.shape[0]):
                     m.pose[angle] = angles_gt[angle]
 
-                smpl_verts_gt = np.array(m.r)
-                #print(m.r[0], 'from pose estimator')
-               # print('************root shift gt**************', OUTPUT_DICT['root_shift_gt'])
 
-                #print(root_shift_est_gt, 'root shift est gt')
-                #print(m.J_transformed[0, :])
 
-                #for s in range(root_shift_est_gt.shape[0]):
-                #    smpl_verts_gt[:, s] += (root_shift_est_gt[s] - float(m.J_transformed[0, s]))
 
-                #smpl_verts_gt = np.concatenate(
-                #    (smpl_verts_gt[:, 1:2] - 0.286 + 0.0143, smpl_verts_gt[:, 0:1] - 0.286 + 0.0143,
-                #     0.0 - smpl_verts_gt[:, 2:3]), axis=1)
+                bed_leg_ht = 0.3048
+                mattress_ht = 0.2032
+                entire_bed_shift = np.array([-0.45775, -0.98504, bed_leg_ht+mattress_ht])
+
 
                 self.root_shift_gt = np.array(OUTPUT_DICT['root_shift_gt'] - m.J[0, :])
-                self.smpl_verts = np.array(smpl_verts_gt) + self.root_shift_gt #+ np.array([-0.286, -0.286, 0.3048])
+                #self.smpl_verts = np.array(m.r) + self.root_shift_gt + entire_bed_shift #this is for ground truth
+                self.smpl_verts = OUTPUT_DICT['verts'][0] + entire_bed_shift #this is for estimate
+
 
                 self.joint_locs_trans_abs = []
                 for i in range(24):
-                    self.joint_locs_trans_abs.append(list(m.J_transformed[i, :]+ self.root_shift_gt))
+
+                    #to_append = list(np.array(m.J_transformed[i, :])+ self.root_shift_gt + entire_bed_shift) #this is for ground truth
+                    to_append = list(np.array(OUTPUT_DICT['targets_est_np'][0][i]) + entire_bed_shift) #this is for estimate
+                    self.joint_locs_trans_abs.append(to_append)
 
                 self.m = m
-                '''
 
-                joint_cart_gt = np.array(m.J_transformed).reshape(24, 3)
-                for s in range(root_shift_est_gt.shape[0]):
-                    joint_cart_gt[:, s] += (root_shift_est_gt[s] - float(m.J_transformed[0, s]))
 
-                # print joint_cart_gt, 'gt'
-
-                sc_sample = OUTPUT_DICT['batch_targets_est'].clone()
-                sc_sample = (sc_sample[0, :].squeeze().cpu().numpy() / 1000).reshape(24, 3)
-
-                # print sc_sample, 'estimate'
-                joint_error = np.linalg.norm(joint_cart_gt - sc_sample, axis=1)
-                # print joint_error
-                RESULTS_DICT['j_err'].append(joint_error)
-
-                camera_point = [1.09898028, 0.46441343, -CAM_BED_DIST]
-
-                # render everything
-                RESULTS_DICT = self.pyRender.render_mesh_pc_bed_pyrender_everything_synth(smpl_verts, smpl_faces,
-                                                                                          camera_point, bedangle,
-                                                                                          RESULTS_DICT,
-                                                                                          smpl_verts_gt=smpl_verts_gt,
-                                                                                          pmat=pmat,
-                                                                                          markers=None,
-                                                                                          dropout_variance=dropout_variance)
-                '''
         return self.m, self.joint_locs_trans_abs
 
 
@@ -597,12 +549,9 @@ class PoseEstimator():
 
         legacy_x_shift = -0.286 + 0.0143
         legacy_y_shift = -0.286 + 0.0143
-
-        bed_leg_ht = 0.3048
-        mattress_ht = 0.2032
         pmat_ht = 0.075
 
-        self.smpl_verts += np.array([legacy_x_shift, legacy_y_shift, bed_leg_ht+mattress_ht+pmat_ht])#np.array(root_shift)
+        self.smpl_verts += np.array([legacy_x_shift, legacy_y_shift, pmat_ht])#np.array(root_shift)
 
         smpl_faces = np.array(self.m.f)
 
