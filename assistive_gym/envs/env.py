@@ -75,7 +75,7 @@ class AssistiveEnv(gym.Env):
         p.resetSimulation(physicsClientId=self.id)
         # Configure camera position
         #p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=25, cameraPitch=-45, cameraTargetPosition=[-0.2, 0, 0.4], physicsClientId=self.id)
-        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=210, cameraPitch=-45, cameraTargetPosition=[-0.2, 0.0, 0.4], physicsClientId=self.id)
+        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=200, cameraPitch=-45, cameraTargetPosition=[-0.2, 0.0, 0.4], physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0, physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.id)
         p.setTimeStep(self.time_step, physicsClientId=self.id)

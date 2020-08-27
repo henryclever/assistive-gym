@@ -541,7 +541,7 @@ class PoseEstimator():
                 self.m = m
 
 
-        return self.m, self.joint_locs_trans_abs
+        return self.m, self.smpl_verts, self.joint_locs_trans_abs
 
 
 

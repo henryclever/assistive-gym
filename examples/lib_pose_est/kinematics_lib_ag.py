@@ -306,6 +306,7 @@ class KinematicsLib():
         m20 = M[2, 0]
         m21 = M[2, 1]
         m22 = M[2, 2]
+
         # symmetric matrix K
         K = np.array([[m00 - m11 - m22, 0.0, 0.0, 0.0],
                       [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
@@ -382,6 +383,83 @@ class KinematicsLib():
             z = 0
 
         return np.array([x, y, z])
+
+    def rotationMatrixToQuaternion(self, M):
+        assert (self.isRotationMatrix(M))
+        m00 = M[0, 0]
+        m01 = M[0, 1]
+        m02 = M[0, 2]
+        m10 = M[1, 0]
+        m11 = M[1, 1]
+        m12 = M[1, 2]
+        m20 = M[2, 0]
+        m21 = M[2, 1]
+        m22 = M[2, 2]
+        # symmetric matrix K
+        K = np.array([[m00 - m11 - m22, 0.0, 0.0, 0.0],
+                      [m01 + m10, m11 - m00 - m22, 0.0, 0.0],
+                      [m02 + m20, m12 + m21, m22 - m00 - m11, 0.0],
+                      [m21 - m12, m02 - m20, m10 - m01, m00 + m11 + m22]])
+        K /= 3.0
+        # quaternion is eigenvector of K that corresponds to largest eigenvalue
+        w, V = np.linalg.eigh(K)
+        q = V[[3, 0, 1, 2], np.argmax(w)]
+        if q[0] < 0.0:
+            np.negative(q, q)
+
+        return q
+
+    def vectorToEulerAngles(self, vector):
+
+        if vector[1] < 0:
+            yaw = (np.pi + np.arctan2(vector[1], vector[2]))
+            yaw2 = np.arctan(vector[1]/vector[2])
+        else:
+            yaw = -(np.pi - np.arctan2(vector[1], vector[2]))
+            yaw2 = -np.arctan(vector[1]/vector[2])
+
+        pitch = np.arcsin(-vector[0])
+
+        angle_possib = []
+        vector_possib = []
+        error = []
+        for j in range(-314, 314):
+            radians = float(j / 100)
+
+            angle_possib.append(radians)
+            vect = KinematicsLib().eulerAnglesToRotationMatrix([radians, pitch, yaw])
+            vector_possib.append([vect[0, 2], vect[0, 1], -vect[0, 0]])
+            error.append(np.linalg.norm(vector_possib[-1] - vector))
+
+        min_idx = np.argmin(error)
+        roll = angle_possib[min_idx]
+
+        #yaw = -pi/2
+        #yaw = 3.14, pitch = 0, roll = 0 #we should have these for [0, 0, 1]
+        #yaw = 0, pitch = 0, roll = 0 #we should have these for [0, 0, -1]
+        #yaw = -pi/2, pitch = 0. , roll = 0#we should have these for [0, 1, 0] to head
+        #yaw = pi/2, pitch = 0., roll = 0 #we should have these for [0, -1, 0] to feet
+        #yaw = 3.14, pitch = -pi/2, roll = 0 #we should have these for [1, 0, 0] to right
+        #yaw = 3.14, pitch = pi/2, roll = 0 #we should have these for [-1, 0, 0] to left
+
+        #yaw = -pi/2, pitch =-pi/4, roll = -pi/4 #we should have these for [1, 1, 0]
+        #yaw = pi/2, pitch =pi/4, roll = -pi/4 #we should have these for [-1, -1, 0]
+        #yaw = -pi/2 pitch = pi/4, roll = pi/4 #we should have these for [-1, 1, 0]
+        #yaw = pi/2 pitch = -pi/4, roll = pi/4 #we should have these for [1, -1, 0]
+
+        #yaw = -3*pi/4 pitch = 0, roll = 0 #we should have these for [0, 1, 1]
+        #yaw = pi/4 pitch = 0, roll = 0 #we should have these for [0, -1, -1]
+        #yaw = 3*pi/4 pitch = 0, roll = 0 #we should have these for [0, -1, 1]
+        #yaw = -pi/4 pitch = 0, roll = 0 #we should have these for [0, 1, -1]
+
+        #yaw = pi pitch = -pi/4, roll = 0 #we should have these for [1, 0, 1] -- yaw - pi
+        #yaw = 0 pitch = pi/4, roll = pi #we should have these for [-1, 0, -1] --yaw - pi
+        #yaw = pi pitch = pi/4, roll = 0 #we should have these for [-1, 0, 1] --yaw - pi
+        #yaw = 0 pitch = -pi/4, roll = pi #we should have these for [1, 0, -1] --yaw - pi
+
+        return np.array([roll, pitch, yaw])
+
+
 
     def quaternionToRotationMatrix(self, Q):
         Q = np.array(Q)

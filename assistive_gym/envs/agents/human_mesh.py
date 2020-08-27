@@ -38,24 +38,30 @@ class HumanMesh(Agent):
         self.human_type = "mesh"
         self.mesh_type = dataset_info_dict['mesh_type']
 
-        self.right_pecs = 2
-        self.right_shoulder = 5
-        self.right_elbow = 7
-        self.right_wrist = 9
-        self.left_pecs = 12
-        self.left_shoulder = 15
-        self.left_elbow = 17
-        self.left_wrist = 19
-        self.neck = 20
-        self.head = 23
-        self.stomach = 24
-        self.waist = 27
-        self.right_hip = 30
+        self.pelvis = 0
+        self.left_hip = 1
+        self.right_hip = 2
+        self.stomach = 3
+        self.left_knee = 4
         self.right_knee = 5
-        self.right_ankle = 34
-        self.left_hip = 37
-        self.left_knee = 38
-        self.left_ankle = 41
+        self.left_ankle = 7
+        self.right_ankle = 8
+        self.chest = 9
+        self.left_foot = 10
+        self.right_foot = 11
+        self.neck = 12
+        self.left_peck = 13
+        self.right_peck = 14
+        self.head = 15
+        self.left_shoulder = 16
+        self.right_shoulder = 17
+        self.left_elbow = 18
+        self.right_elbow = 19
+        self.left_wrist = 20
+        self.right_wrist = 21
+        self.left_hand = 22
+        self.right_hand = 23
+
 
     def init(self, human_creation, limits_model, static_human_base, impairment, gender, config, id, np_random, mass=None, radius_scale=1.0, height_scale=1.0, directory = None):
         self.impairment = 'none'
@@ -107,20 +113,24 @@ class HumanMesh(Agent):
 
 
 
-    def assign_new_pose(self, m, joint_locs_trans_abs):
+    def assign_new_pose(self, m, smpl_verts, joint_locs_trans_abs):
 
-        legacy_x_shift = -0.286 + 0.0143
-        legacy_y_shift = -0.286 + 0.0143
-        pmat_ht = 0.075
 
+        self.legacy_x_shift = -0.286 + 0.0143
+        self.legacy_y_shift = -0.286 + 0.0143
+        self.pmat_ht = 0.075
+
+        joint_locs_trans_abs = np.array(joint_locs_trans_abs)
 
         self.joint_locs_trans_abs = []
 
         for i in range(24):
-            to_append = np.array(joint_locs_trans_abs[i]) + np.array([legacy_x_shift, legacy_y_shift, pmat_ht])
+            to_append = np.array(joint_locs_trans_abs[i]) + np.array([self.legacy_x_shift, self.legacy_y_shift, self.pmat_ht])
             self.joint_locs_trans_abs.append(to_append)
 
         self.m = m
+        self.smpl_verts = smpl_verts
+
 
 
     def get_mesh_pos_orient(self, link, center_of_mass=False, convert_to_realworld=False):
@@ -128,6 +138,150 @@ class HumanMesh(Agent):
         orient = self.quat_from_dir_cos_angles(np.array([self.m.pose[link], self.m.pose[link+1], self.m.pose[link+2]]))
 
         return np.array(pos), np.array(orient)
+
+    def get_random_mesh_loc(self, chosen_vert_ind = None):
+
+        faces = np.array(self.m.f)
+
+        if chosen_vert_ind is None:
+            # randomly sample a vertex that is weighted by the area of its surrounding triangles
+            #we also need to use raycasting to see if it's part of the body that a tool can access from above
+            vert_weights = self.get_triangle_area_vert_weight(self.smpl_verts, faces)/6890.
+            chosen_vert_fails_raycasting = True
+            while chosen_vert_fails_raycasting == True:
+                chosen_vert_fails_raycasting = False
+                ind = np.where(np.random.multinomial(1, vert_weights))[0][0]
+                print("randomly chose vert, idx is:", ind)
+
+                chosen_vert = np.array(self.smpl_verts[ind, :])
+                for face_idx in range(np.shape(faces)[0]):
+                    vert_inds = faces[face_idx, :]
+                    vA = np.array(self.smpl_verts[vert_inds[0], :])
+                    vB = np.array(self.smpl_verts[vert_inds[1], :])
+                    vC = np.array(self.smpl_verts[vert_inds[2], :])
+                    if vA[0] <= chosen_vert[0] and vB[0] <= chosen_vert[0] and vC[0] <= chosen_vert[0]:
+                        continue
+                    elif vA[0] >= chosen_vert[0] and vB[0] >= chosen_vert[0] and vC[0] >= chosen_vert[0]:
+                        continue
+                    elif vA[1] <= chosen_vert[1] and vB[1] <= chosen_vert[1] and vC[1] <= chosen_vert[1]:
+                        continue
+                    elif vA[1] >= chosen_vert[1] and vB[1] >= chosen_vert[1] and vC[1] >= chosen_vert[1]:
+                        continue
+                    elif np.linalg.norm(chosen_vert - vA) == 0 or np.linalg.norm(chosen_vert - vB) == 0 or np.linalg.norm(chosen_vert - vC) == 0:
+                        continue
+                    else:
+
+                        d_point_AB = (chosen_vert[0] - vA[0])*(vB[1] - vA[1]) - (chosen_vert[1] - vA[1])*(vB[0] - vA[0])
+                        d_C_AB = (vC[0] - vA[0])*(vB[1] - vA[1]) - (vC[1] - vA[1])*(vB[0] - vA[0])
+
+                        d_point_BC = (chosen_vert[0] - vB[0])*(vC[1] - vB[1]) - (chosen_vert[1] - vB[1])*(vC[0] - vB[0])
+                        d_A_BC = (vA[0] - vB[0])*(vC[1] - vB[1]) - (vA[1] - vB[1])*(vC[0] - vB[0])
+
+                        d_point_AC = (chosen_vert[0] - vC[0])*(vA[1] - vC[1]) - (chosen_vert[1] - vC[1])*(vA[0] - vC[0])
+                        d_B_AC = (vB[0] - vC[0])*(vA[1] - vC[1]) - (vB[1] - vC[1])*(vA[0] - vC[0])
+
+                        if d_point_AB*d_C_AB >=0 and d_point_BC*d_A_BC >= 0 and d_point_AC*d_B_AC >= 0:
+                            if np.abs(d_C_AB) - np.abs(d_point_AB) > 0 and np.abs(d_A_BC) - np.abs(d_point_BC) > 0 and np.abs(d_B_AC) - np.abs(d_point_AC) > 0:
+                                #print("same side of lines and between")
+                                if vA[2] > chosen_vert[2] or vB[2] > chosen_vert[2] or vC[2] > chosen_vert[2]:
+                                    #print("RAYTRACING FOUND SURF ABOVE:", chosen_vert, "   probability:", vert_weights[ind] * 6890.)
+                                    #print("                OTHERS:", vA, vB, vC)
+                                    #print("                ", d_point_AB, d_C_AB)
+                                    #print("                ", d_point_BC, d_A_BC)
+                                    #print("                ", d_point_AC, d_B_AC)
+                                    #print("                       ", d_point_AB * d_C_AB, d_point_BC * d_A_BC, d_point_AC * d_B_AC)
+                                    #print("                       ", np.abs(d_C_AB) - np.abs(d_point_AB), np.abs(d_A_BC) - np.abs(d_point_BC), np.abs(d_B_AC) - np.abs(d_point_AC))
+                                    chosen_vert_fails_raycasting = True
+                                    print("raytracing found an overlying surface. trying again...")
+                                    continue
+                            else:
+                                pass
+                                #print("same side of lines but at least one isn't between")
+                        else:
+                            pass
+                            #print("one of the points isn't on same side of line")
+
+        else:
+            print("chose existing vert, idx is:", chosen_vert_ind)
+            chosen_vert = np.array(self.smpl_verts[chosen_vert_ind, :])
+
+
+        return chosen_vert
+
+
+
+    def get_triangle_area_vert_weight(self, verts, faces):
+
+        # first we need all the triangle areas
+        tri_verts = verts[faces, :]
+        a = np.linalg.norm(tri_verts[:, 0] - tri_verts[:, 1], axis=1)
+        b = np.linalg.norm(tri_verts[:, 1] - tri_verts[:, 2], axis=1)
+        c = np.linalg.norm(tri_verts[:, 2] - tri_verts[:, 0], axis=1)
+        s = (a + b + c) / 2
+        A = np.sqrt(s * (s - a) * (s - b) * (s - c))
+
+        # print np.shape(verts), np.shape(faces), np.shape(A), np.mean(A), 'area'
+
+        A = np.swapaxes(np.stack((A, A, A)), 0, 1)  # repeat the area for each vert in the triangle
+        A = A.flatten()
+        faces = np.array(faces).flatten()
+        i = np.argsort(faces)  # sort the faces and the areas by the face idx
+        faces_sorted = faces[i]
+        A_sorted = A[i]
+        last_face = 0
+        area_minilist = []
+        area_avg_list = []
+        face_sort_list = []  # take the average area for all the trianges surrounding each vert
+        for vtx_connect_idx in range(np.shape(faces_sorted)[0]):
+            if faces_sorted[vtx_connect_idx] == last_face and vtx_connect_idx != np.shape(faces_sorted)[0] - 1:
+                area_minilist.append(A_sorted[vtx_connect_idx])
+            elif faces_sorted[vtx_connect_idx] > last_face or vtx_connect_idx == np.shape(faces_sorted)[0] - 1:
+                if len(area_minilist) != 0:
+                    area_avg_list.append(np.mean(area_minilist))
+                else:
+                    area_avg_list.append(0)
+                face_sort_list.append(last_face)
+                area_minilist = []
+                last_face += 1
+                if faces_sorted[vtx_connect_idx] == last_face:
+                    area_minilist.append(A_sorted[vtx_connect_idx])
+                elif faces_sorted[vtx_connect_idx] > last_face:
+                    num_tack_on = np.copy(faces_sorted[vtx_connect_idx] - last_face)
+                    for i in range(num_tack_on):
+                        area_avg_list.append(0)
+                        face_sort_list.append(last_face)
+                        last_face += 1
+                        if faces_sorted[vtx_connect_idx] == last_face:
+                            area_minilist.append(A_sorted[vtx_connect_idx])
+
+        # print np.mean(area_avg_list), 'area avg'
+
+        area_avg = np.array(area_avg_list)
+        area_avg_red = area_avg[
+            area_avg > 0]  # find out how many of the areas correspond to verts facing the camera
+
+        # print np.mean(area_avg_red), 'area avg'
+        # print np.sum(area_avg_red), np.sum(area_avg)
+
+        norm_area_avg = area_avg / np.sum(area_avg_red)
+        norm_area_avg = norm_area_avg * np.shape(area_avg_red)  # multiply by the REDUCED num of verts
+        # print norm_area_avg[0:3], np.min(norm_area_avg), np.max(norm_area_avg), np.mean(norm_area_avg), np.sum(norm_area_avg)
+        # print norm_area_avg.shape, np.shape(verts_idx_red)
+
+        # print np.shape(verts_idx_red), np.min(verts_idx_red), np.max(verts_idx_red)
+        # print np.shape(norm_area_avg), np.min(norm_area_avg), np.max(norm_area_avg)
+
+        #try:
+        #    norm_area_avg = norm_area_avg[verts]
+        #except:
+        #    norm_area_avg = norm_area_avg[verts[:-1]]
+
+        # print norm_area_avg[0:3], np.min(norm_area_avg), np.max(norm_area_avg), np.mean(norm_area_avg), np.sum(norm_area_avg)
+        return norm_area_avg
+
+
+
+
 
     def quat_from_dir_cos_angles(self,theta):
         angle = np.linalg.norm(theta)

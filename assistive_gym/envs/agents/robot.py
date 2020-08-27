@@ -117,6 +117,8 @@ class Robot(Agent):
         else:
             human_angles = human.get_joint_angles(human.controllable_joint_indices)
 
+        base_pos_center = np.array([-0.85, -0.4, 0])
+        #base_pos_center = np.array([0.85, -0.4, 0])
 
 
         while iteration < attempts or best_position is None:
@@ -124,7 +126,7 @@ class Robot(Agent):
             # Randomize base position and orientation
             random_pos = np.array([self.np_random.uniform(-random_position if right_side else 0, 0 if right_side else random_position), self.np_random.uniform(-random_position, random_position), 0])
             random_orientation = p.getQuaternionFromEuler([base_euler_orient[0], base_euler_orient[1], base_euler_orient[2] + np.deg2rad(self.np_random.uniform(-random_rotation, random_rotation))], physicsClientId=self.id)
-            self.set_base_pos_orient(np.array([-0.85, -0.4, 0]) + self.toc_base_pos_offset[task] + random_pos, random_orientation)
+            self.set_base_pos_orient(base_pos_center + self.toc_base_pos_offset[task] + random_pos, random_orientation)
             # Reset all robot joints to their defaults
             self.reset_joints()
             # Reset human joints in case they got perturbed by previous iterations
@@ -133,6 +135,8 @@ class Robot(Agent):
             manipulability = 0.0
             start_joint_poses = [None]*len(arms)
             # Check if the robot can reach all target locations from this base pose
+
+
             for i, arm in enumerate(arms):
                 right = (arm == 'right')
                 ee = self.right_end_effector if right else self.left_end_effector
@@ -140,6 +144,10 @@ class Robot(Agent):
                 lower_limits = self.right_arm_lower_limits if right else self.left_arm_lower_limits
                 upper_limits = self.right_arm_upper_limits if right else self.left_arm_upper_limits
                 for j, (target_pos, target_orient) in enumerate(start_pos_orient[i] + target_pos_orients[i]):
+
+                    #print('j', j, start_pos_orient[i] + target_pos_orients[i])
+                    #print(target_pos, target_orient)
+
                     best_jlwki = None
                     best_joint_positions = None
                     for k in range(jlwki_restarts):
