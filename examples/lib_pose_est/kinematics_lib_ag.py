@@ -430,9 +430,12 @@ class KinematicsLib():
             vect = KinematicsLib().eulerAnglesToRotationMatrix([radians, pitch, yaw])
             vector_possib.append([vect[0, 2], vect[0, 1], -vect[0, 0]])
             error.append(np.linalg.norm(vector_possib[-1] - vector))
+            #print(error[-1], vector_possib[-1])
 
         min_idx = np.argmin(error)
         roll = angle_possib[min_idx]
+
+        #print(vector_possib[min_idx], "vector of chosen angle" )
 
         #yaw = -pi/2
         #yaw = 3.14, pitch = 0, roll = 0 #we should have these for [0, 0, 1]

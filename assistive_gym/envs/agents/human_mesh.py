@@ -150,10 +150,11 @@ class HumanMesh(Agent):
             chosen_vert_fails_raycasting = True
             while chosen_vert_fails_raycasting == True:
                 chosen_vert_fails_raycasting = False
-                ind = np.where(np.random.multinomial(1, vert_weights))[0][0]
-                print("randomly chose vert, idx is:", ind)
+                chosen_vert_ind = np.where(np.random.multinomial(1, vert_weights))[0][0]
+                print("randomly chose vert, idx is:", chosen_vert_ind)
 
-                chosen_vert = np.array(self.smpl_verts[ind, :])
+
+                chosen_vert = np.array(self.smpl_verts[chosen_vert_ind, :])
                 for face_idx in range(np.shape(faces)[0]):
                     vert_inds = faces[face_idx, :]
                     vA = np.array(self.smpl_verts[vert_inds[0], :])
@@ -206,7 +207,7 @@ class HumanMesh(Agent):
             chosen_vert = np.array(self.smpl_verts[chosen_vert_ind, :])
 
 
-        return chosen_vert
+        return chosen_vert, chosen_vert_ind
 
 
 

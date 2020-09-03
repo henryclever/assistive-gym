@@ -16,7 +16,7 @@ from .agents.tool import Tool
 from .agents.furniture import Furniture
 
 class AssistiveEnv(gym.Env):
-    def __init__(self, robot=None, human=None, human_est = None, bed_type='default', task=None, obs_robot_len=0, obs_human_len=0, time_step=0.02, frame_skip=5, render=False, gravity=-9.81, seed=1001):
+    def __init__(self, robot=None, human=None, human_est = None, bed_type='default', task=None, obs_robot_len=0, obs_human_len=0, time_step=0.02, frame_skip=5, render=False, gravity=-9.81, seed=1001, camera_yaw = 20):
 
         print("bed type:", bed_type)
         self.task = task
@@ -26,6 +26,7 @@ class AssistiveEnv(gym.Env):
         self.id = None
         self.gui = False
         self.np_random, seed = seeding.np_random(seed)
+        self.camera_yaw = camera_yaw
         if render:
             self.render()
         else:
@@ -75,7 +76,7 @@ class AssistiveEnv(gym.Env):
         p.resetSimulation(physicsClientId=self.id)
         # Configure camera position
         #p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=25, cameraPitch=-45, cameraTargetPosition=[-0.2, 0, 0.4], physicsClientId=self.id)
-        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=200, cameraPitch=-45, cameraTargetPosition=[-0.2, 0.0, 0.4], physicsClientId=self.id)
+        p.resetDebugVisualizerCamera(cameraDistance=1.75, cameraYaw=self.camera_yaw, cameraPitch=-45, cameraTargetPosition=[-0.2, 0.0, 0.4], physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_MOUSE_PICKING, 0, physicsClientId=self.id)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0, physicsClientId=self.id)
         p.setTimeStep(self.time_step, physicsClientId=self.id)

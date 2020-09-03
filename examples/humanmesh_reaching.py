@@ -1,3 +1,6 @@
+CHOSEN_VERT = None #change this to some vertex integer if you want a specific one
+CAMERA_YAW_ANGLE = 200
+
 import pybullet as p
 import numpy as np
 from assistive_gym.envs.env import AssistiveEnv
@@ -8,8 +11,6 @@ import time as time
 from lib_update_mesh import LibUpdateMesh
 from lib_pose_est.pose_estimator import PoseEstimator
 from lib_pose_est.kinematics_lib_ag import KinematicsLib
-
-
 
 
 
@@ -40,6 +41,7 @@ class HumanMeshReaching():
         robot_arm = 'left'
         self.robot = PR2(robot_arm, human_type='mesh')
 
+
         if True:
             LUM = LibUpdateMesh(dataset_info_dict)
             LUM.update_mattress_mesh()
@@ -48,7 +50,7 @@ class HumanMeshReaching():
             PE.update_est_human_mesh()
 
         self.env = AssistiveEnv(robot=self.robot, human=self.human, human_est=self.human_est, task='bed_bathing', bed_type='pressuresim',
-                           render=True)
+                           render=True, camera_yaw = CAMERA_YAW_ANGLE)
         self.env.reset()
 
         print('building assistive env')
@@ -63,18 +65,18 @@ class HumanMeshReaching():
         human_joint_goal_loc = self.human.get_mesh_pos_orient(self.human.right_hip)[0] + np.array([0.0, 0.0, 0.06])
         #human_joint_goal_loc[1] = 0.87
 
-        human_joint_goal_loc = self.human.get_random_mesh_loc() + np.array([0.0, 0.0, 0.05])
+        human_joint_goal_loc, vert_ind = self.human.get_random_mesh_loc(chosen_vert_ind = CHOSEN_VERT) #+ np.array([0.0, 0.0, 0.05])
         #4984 is on the right hip and has a error where the angle is too tilted so the robots arm gets hung up  on the bed.
-
+        self.vert_ind = vert_ind
 
         np_random = self.env.np_random
 
 
         if robot_arm == 'left':
-            target_ee_pos = np.array([-0.5, human_joint_goal_loc[1]+0.3, 0.9]) #+ np_random.uniform(-0.05, 0.05, size=3)
+            target_ee_pos = np.array([-0.5, human_joint_goal_loc[1]+0.3, 0.8]) #+ np_random.uniform(-0.05, 0.05, size=3)
             #target_ee_pos = np.array([-0.5, 0.2, 0.9]) #+ np_random.uniform(-0.05, 0.05, size=3)
         if robot_arm == 'right':
-            target_ee_pos = np.array([-0.5, human_joint_goal_loc[1]-0.3, 0.9]) #+ np_random.uniform(-0.05, 0.05, size=3)
+            target_ee_pos = np.array([-0.5, human_joint_goal_loc[1]-0.3, 0.8]) #+ np_random.uniform(-0.05, 0.05, size=3)
 
         else:
             assert('robot arm name not valid')
@@ -121,9 +123,9 @@ class HumanMeshReaching():
 
         self.goal_pos_obj_list = self.env.create_surface_normal(pos=self.pose_seq[0][0], orient=self.pose_seq[0][1],
                                                       rgba=[0.7, 0.7, 0.15, 0.5])
-        #end_eff_rev_offset = np.matmul(KinematicsLib().quaternionToRotationMatrix(self.pose_seq[0][1]), np.array([0.0, 0.0, 0.05]))
-        #self.goal_pos_obj_list2 = self.env.create_surface_normal(pos=self.pose_seq[0][0] + end_eff_rev_offset,
-        #                                               orient=self.pose_seq[0][1], rgba=[0.7, 0.0, 0.15, 0.5])
+        end_eff_rev_offset = np.matmul(KinematicsLib().quaternionToRotationMatrix(self.pose_seq[0][1]), np.array([0.0, 0.0, 0.05]))
+        self.goal_pos_obj_list2 = self.env.create_surface_normal(pos=self.pose_seq[0][0] + end_eff_rev_offset,
+                                                       orient=self.pose_seq[0][1], rgba=[0.7, 0.0, 0.15, 0.5])
 
         self.human_surf_goal_obj_list = self.env.create_surface_normal(pos=self.pose_seq[-1][0], orient=self.pose_seq[-1][1],
                                                              rgba=[0.1, 0.9, 0.15, 0.5])
@@ -146,6 +148,9 @@ class HumanMeshReaching():
 
         robot_joint_angles = self.robot.get_joint_angles(self.robot.left_arm_joint_indices)
 
+        if self.has_updated_init_touch == False:
+            print('moving to vert: ', self.vert_ind)
+
         # Before contact is made, ensure the tool moves along a relatively straight path.
         if self.tool_force == 0 and self.has_updated_init_touch == False and np.linalg.norm(
                 self.target_joint_angles - robot_joint_angles) < 0.03 and len(self.pose_seq) > 1:
@@ -159,11 +164,12 @@ class HumanMeshReaching():
 
             for item in self.goal_pos_obj_list:
                 item.set_base_pos_orient(pos=updated_goal_pos, orient=updated_goal_orient)
-            #for item in self.goal_pos_obj_list2:
-            #    item.set_base_pos_orient(pos=updated_goal_pos + end_eff_rev_offset, orient=updated_goal_orient)
+            for item in self.goal_pos_obj_list2:
+                item.set_base_pos_orient(pos=updated_goal_pos + end_eff_rev_offset, orient=updated_goal_orient)
             self.target_joint_angles = self.robot.ik(self.robot.left_end_effector, updated_goal_pos + end_eff_rev_offset, updated_goal_orient,
                                            ik_indices=self.robot.left_arm_ik_indices, max_iterations=1000,
                                            use_current_as_rest=True)
+
 
         # Once contact has been made, set final position to current position and rotate end effector to be parallel with skin
         # we need to do this a few times though to balance it out.
@@ -178,8 +184,8 @@ class HumanMeshReaching():
 
                 for item in self.goal_pos_obj_list:
                     item.set_base_pos_orient(pos=self.contact_pos, orient=self.updated_goal_orient)
-                #for item in self.goal_pos_obj_list2:
-                #    item.set_base_pos_orient(pos=self.contact_pos + end_eff_rev_offset, orient=self.updated_goal_orient)
+                for item in self.goal_pos_obj_list2:
+                    item.set_base_pos_orient(pos=self.contact_pos + end_eff_rev_offset, orient=self.updated_goal_orient)
                 print("updating end effector orientation")
                 self.target_joint_angles = self.robot.ik(self.robot.left_end_effector, self.contact_pos + end_eff_rev_offset, self.updated_goal_orient,
                                                ik_indices=self.robot.left_arm_ik_indices, max_iterations=1000,
@@ -239,8 +245,8 @@ class HumanMeshReaching():
             self.updated_euler, self.updated_goal_orient, self.updated_R = self.get_updated_euler_quat(-np.array(self.contact_normal), orient)
             print("force dir: ", -force_direction, "     surface normal:", self.contact_normal)
 
-        print('End effector position error: %.2fcm' % (np.linalg.norm(pos - self.pose_seq[0][0]) * 100),
-              'Orientation error:', ['%.4f' % v for v in (orient - self.pose_seq[0][1])])
+        #print('End effector position error: %.2fcm' % (np.linalg.norm(pos - self.pose_seq[0][0]) * 100),
+        #      'Orientation error:', ['%.4f' % v for v in (orient - self.pose_seq[0][1])])
         #print(np.linalg.norm(self.target_joint_angles - robot_joint_angles))
 
         self.tool_pos, tool_orient = self.env.tool.get_pos_orient(1)
