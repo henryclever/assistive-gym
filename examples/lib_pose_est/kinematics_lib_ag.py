@@ -363,7 +363,7 @@ class KinematicsLib():
 
     def quaternionToEulerAngles(self, Q):
         if np.linalg.norm(Q) == 0:
-            print("quaternion is zero")
+            print("quaternion is zero, quat2euler")
         else:
             Q = np.array(Q)/np.linalg.norm(Q)
 
@@ -471,7 +471,7 @@ class KinematicsLib():
     def quaternionToRotationMatrix(self, Q):
 
         if np.linalg.norm(Q) == 0:
-            print("quaternion is zero")
+            print("quaternion is zero, quat2Rot")
         else:
             Q = np.array(Q)/np.linalg.norm(Q)
 
