@@ -84,7 +84,17 @@ class PoseEstimator():
     '''Gets the dictionary of pressure maps from the training database,
     and will have API to do all sorts of training with it.'''
 
+
+
     def __init__(self, dataset_info_dict):
+        self.gender = dataset_info_dict['gender']
+        model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
+        m = load_model(model_path)
+
+        self.m = m
+
+
+    def init(self, dataset_info_dict):
 
 
         self.posture = dataset_info_dict['posture']
@@ -373,15 +383,15 @@ class PoseEstimator():
 
     def estimate_pose(self):
 
-        model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
-        m = load_model(model_path)
-
         '''
         Train the model for one epoch.
         '''
         # Some models use slightly different forward passes and train and test
         # time (e.g., any model with Dropout). This puts the model in train mode
         # (as opposed to eval mode) so it knows which one to use.
+
+        model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
+        m = load_model(model_path)
 
         RESULTS_DICT = {}
         RESULTS_DICT['j_err'] = []
@@ -545,20 +555,20 @@ class PoseEstimator():
 
 
 
-    def update_est_human_mesh(self):
+    def update_est_human_mesh(self, m, smpl_verts):
 
         legacy_x_shift = -0.286 + 0.0143
         legacy_y_shift = -0.286 + 0.0143
         pmat_ht = 0.075
 
-        self.smpl_verts += np.array([legacy_x_shift, legacy_y_shift, pmat_ht])#np.array(root_shift)
+        smpl_verts += np.array([legacy_x_shift, legacy_y_shift, pmat_ht])#np.array(root_shift)
 
-        smpl_faces = np.array(self.m.f)
+        smpl_faces = np.array(m.f)
 
         outmesh_human_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/human_mesh/human_est.obj"
         with open(outmesh_human_path, 'w') as fp:
-            for v_idx in range(self.smpl_verts.shape[0]):
-                fp.write('v %f %f %f\n' % (self.smpl_verts[v_idx, 0], self.smpl_verts[v_idx, 1], self.smpl_verts[v_idx, 2]))
+            for v_idx in range(smpl_verts.shape[0]):
+                fp.write('v %f %f %f\n' % (smpl_verts[v_idx, 0], smpl_verts[v_idx, 1], smpl_verts[v_idx, 2]))
 
             for f_idx in range(smpl_faces.shape[0]):
                 fp.write('f %d %d %d\n' % (smpl_faces[f_idx, 0]+1, smpl_faces[f_idx, 1]+1, smpl_faces[f_idx, 2]+1))

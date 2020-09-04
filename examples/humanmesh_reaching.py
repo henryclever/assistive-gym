@@ -1,4 +1,8 @@
 CHOSEN_VERT = None #change this to some vertex integer if you want a specific one
+#some example picks:
+# 978, goal is left thigh but wipes right thigh instead because it hits it first
+# 3073, goal is sternum but it's a bit out of the robots reach. gets close.
+
 CAMERA_YAW_ANGLE = 200
 
 import pybullet as p
@@ -13,6 +17,13 @@ from lib_pose_est.pose_estimator import PoseEstimator
 from lib_pose_est.kinematics_lib_ag import KinematicsLib
 
 
+import pickle as pickle
+
+
+# from hrl_lib.util import load_pickle
+def load_pickle(filename):
+    with open(filename, 'rb') as f:
+        return pickle.load(f, encoding='latin1')
 
 class HumanMeshReaching():
     def __init__(self):
@@ -33,7 +44,20 @@ class HumanMeshReaching():
         self.human_est = h.HumanMesh(dataset_info_dict_est)
 
         PE = PoseEstimator(dataset_info_dict)
-        m, smpl_verts, joint_locs_trans_abs = PE.estimate_pose()
+        #PE.init(dataset_info_dict)
+        #m, smpl_verts, joint_locs_trans_abs = PE.estimate_pose()
+
+
+        #pickle.dump([np.array(m.pose), np.array(m.betas), smpl_verts, joint_locs_trans_abs], open('m_smplverts_joints.p', 'wb'))
+        pose, shape, smpl_verts, joint_locs_trans_abs = load_pickle('m_smplverts_joints.p')
+        m = PE.m
+        for i in range(72):
+            m.pose[i] = pose[i]
+        for j in range(10):
+            m.betas[j] = shape[j]
+
+
+        print(m.pose, m.betas, joint_locs_trans_abs)
 
         self.human.assign_new_pose(m, smpl_verts, joint_locs_trans_abs)
         self.human_est.assign_new_pose(m, smpl_verts, joint_locs_trans_abs)
@@ -43,11 +67,11 @@ class HumanMeshReaching():
 
 
         if True:
-            LUM = LibUpdateMesh(dataset_info_dict)
-            LUM.update_mattress_mesh()
-            LUM.update_gt_human_mesh()
+            #LUM = LibUpdateMesh(dataset_info_dict)
+            #LUM.update_mattress_mesh()
+            #LUM.update_gt_human_mesh()
             # LUM.update_est_human_mesh(m, root_shift=root_shift)
-            PE.update_est_human_mesh()
+            PE.update_est_human_mesh(m, smpl_verts)
 
         self.env = AssistiveEnv(robot=self.robot, human=self.human, human_est=self.human_est, task='bed_bathing', bed_type='pressuresim',
                            render=True, camera_yaw = CAMERA_YAW_ANGLE)
