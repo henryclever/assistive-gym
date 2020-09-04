@@ -362,7 +362,11 @@ class KinematicsLib():
         return R
 
     def quaternionToEulerAngles(self, Q):
-        Q = np.array(Q)/np.linalg.norm(Q)
+        if np.linalg.norm(Q) == 0:
+            print("quaternion is zero")
+        else:
+            Q = np.array(Q)/np.linalg.norm(Q)
+
         R = np.array([[1-2*(Q[2]*Q[2]+Q[3]*Q[3]),       2*(Q[1]*Q[2] - Q[0]*Q[3]),       2*(Q[0]*Q[2] + Q[1]*Q[3])],
                      [2*(Q[1]*Q[2] + Q[0]*Q[3]),        1-2*(Q[1]*Q[1]+Q[3]*Q[3]),       2*(Q[2]*Q[3] - Q[0]*Q[1])],
                      [2*(Q[1]*Q[3] - Q[0]*Q[2]),        2*(Q[0]*Q[1] + Q[2]*Q[3]),      1-2*(Q[1]*Q[1]+Q[2]*Q[2])]])
@@ -465,7 +469,12 @@ class KinematicsLib():
 
 
     def quaternionToRotationMatrix(self, Q):
-        Q = np.array(Q)/np.linalg.norm(Q)
+
+        if np.linalg.norm(Q) == 0:
+            print("quaternion is zero")
+        else:
+            Q = np.array(Q)/np.linalg.norm(Q)
+
         R = np.array([[1-2*(Q[2]*Q[2]+Q[3]*Q[3]),       2*(Q[1]*Q[2] - Q[0]*Q[3]),       2*(Q[0]*Q[2] + Q[1]*Q[3])],
                      [2*(Q[1]*Q[2] + Q[0]*Q[3]),        1-2*(Q[1]*Q[1]+Q[3]*Q[3]),       2*(Q[2]*Q[3] - Q[0]*Q[1])],
                      [2*(Q[1]*Q[3] - Q[0]*Q[2]),        2*(Q[0]*Q[1] + Q[2]*Q[3]),      1-2*(Q[1]*Q[1]+Q[2]*Q[2])]])
