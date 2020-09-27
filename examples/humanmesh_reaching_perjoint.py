@@ -1,6 +1,6 @@
 POSE_CHOICE = 60 #you can use 60, 61, or 62
 CAMERA_YAW_ANGLE = 200
-
+#change the joint we are moving to on line 134
 
 MY_DIRECTORY = '/home/henry/git/'
 ASSISTIVE_GYM_DIR = MY_DIRECTORY + 'assistive-gym/'
