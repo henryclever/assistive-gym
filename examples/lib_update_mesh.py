@@ -3,13 +3,14 @@ import time as time
 
 
 class LibUpdateMesh():
-    def __init__(self, dataset_info_dict):
+    def __init__(self, dataset_info_dict, volatile_directory):
         self.posture = dataset_info_dict['posture']
         self.gender = dataset_info_dict['gender']
         self.data_ct_idx = dataset_info_dict['data_ct'][0]
         self.data_ct_l = dataset_info_dict['data_ct'][1]
         self.data_ct_h = dataset_info_dict['data_ct'][2]
         self.set_num = dataset_info_dict['set_num']
+        self.volatile_directory = volatile_directory
 
 
     def update_gt_human_mesh(self):
@@ -26,7 +27,7 @@ class LibUpdateMesh():
             human_faces = np.concatenate((np.array([[0, 1, 2], [0, 4, 1], [0, 5, 4], [0, 2, 132], [0, 235, 5], [0, 132, 235] ]), human_faces), axis = 0)
             human_vf = [human_verts, human_faces]
 
-        outmesh_human_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/human_mesh/human.obj"
+        outmesh_human_path = self.volatile_directory+"human.obj"
         with open(outmesh_human_path, 'w') as fp:
             for v_idx in range(human_verts.shape[0]):
                 fp.write('v %f %f %f\n' % (human_verts[v_idx, 0], human_verts[v_idx, 1], human_verts[v_idx, 2]))
@@ -43,7 +44,7 @@ class LibUpdateMesh():
         human_faces = np.concatenate((np.array([[0, 1, 2], [0, 4, 1], [0, 5, 4], [0, 2, 132], [0, 235, 5], [0, 132, 235] ]), human_faces), axis = 0)
         human_vf = [human_verts, human_faces]
 
-        outmesh_human_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/human_mesh/human_est.obj"
+        outmesh_human_path = self.volatile_directory+"human_est.obj"
         with open(outmesh_human_path, 'w') as fp:
             for v_idx in range(human_verts.shape[0]):
                 fp.write('v %f %f %f\n' % (human_verts[v_idx, 0], human_verts[v_idx, 1], human_verts[v_idx, 2]))
@@ -96,7 +97,7 @@ class LibUpdateMesh():
 
             pmat_vf = [pmat_verts, pmat_faces]
 
-        outmesh_mattress_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_mattress.obj"
+        outmesh_mattress_path = self.volatile_directory+"bed_mattress.obj"
         with open(outmesh_mattress_path, 'w') as fp:
             for v_idx in range(mattress_verts.shape[0]):
                 fp.write('v %f %f %f\n' % (mattress_verts[v_idx, 0], mattress_verts[v_idx, 1], mattress_verts[v_idx, 2]))
@@ -105,7 +106,7 @@ class LibUpdateMesh():
                 fp.write('f %d %d %d\n' % (
                 mattress_faces[f_idx, 0] + 1, mattress_faces[f_idx, 1] + 1, mattress_faces[f_idx, 2] + 1))
 
-        outmesh_pmat_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/bed_mesh/bed_pmat.obj"
+        outmesh_pmat_path = self.volatile_directory+"bed_pmat.obj"
         with open(outmesh_pmat_path, 'w') as fp:
             for v_idx in range(pmat_verts.shape[0]):
                 fp.write('v %f %f %f\n' % (pmat_verts[v_idx, 0], pmat_verts[v_idx, 1], pmat_verts[v_idx, 2]))

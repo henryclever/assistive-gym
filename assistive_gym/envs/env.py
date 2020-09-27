@@ -89,7 +89,7 @@ class AssistiveEnv(gym.Env):
         self.forces = []
         self.task_success = 0
 
-    def build_assistive_env(self, furniture_type=None, fixed_robot_base=True, fixed_human_base=True, human_impairment='random', gender='random'):
+    def build_assistive_env(self, volatile_directory, furniture_type=None, fixed_robot_base=True, fixed_human_base=True, human_impairment='random', gender='random'):
         # Build plane, furniture, robot, human, etc. (just like world creation)
         # Load the ground plane
 
@@ -108,23 +108,20 @@ class AssistiveEnv(gym.Env):
 
         print("human init")
         # Create human
-        self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=self.directory)
+        self.human.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=volatile_directory)
         if self.human.controllable:
             self.agents.append(self.human)
 
         print("human est init")
         # Create human est
-        self.human_est.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=self.directory)
+        self.human_est.init(self.human_creation, self.human_limits_model, fixed_human_base, human_impairment, gender, self.config, self.id, self.np_random, directory=volatile_directory)
         if self.human_est.controllable:
             self.agents.append(self.human_est)
-
-
-
 
         print('furniture init')
         # Create furniture (wheelchair, bed, or table)
         if furniture_type is not None:
-            self.furniture.init(furniture_type, self.directory, self.id, self.np_random, wheelchair_mounted=self.robot.wheelchair_mounted)
+            self.furniture.init(furniture_type, volatile_directory, self.id, self.np_random, wheelchair_mounted=self.robot.wheelchair_mounted)
 
 
         return [self.robot, self.human, self.human_est, self.furniture]
@@ -166,6 +163,7 @@ class AssistiveEnv(gym.Env):
         return self.robot
 
     def take_step(self, actions, gains=0.05, forces=1, action_multiplier=0.05, step_sim=True):
+
         if type(gains) not in (list, tuple):
             gains = [gains]*len(self.agents)
         if type(forces) not in (list, tuple):
@@ -177,6 +175,8 @@ class AssistiveEnv(gym.Env):
         actions = np.clip(actions, a_min=self.action_space.low, a_max=self.action_space.high)
         actions *= action_multiplier
         action_index = 0
+
+
         for i, agent in enumerate(self.agents):
             agent_action_len = len(agent.controllable_joint_indices)
             action = np.copy(actions[action_index:action_index+agent_action_len])
@@ -194,6 +194,7 @@ class AssistiveEnv(gym.Env):
                     agent_joint_angles = agent.target_joint_angles + agent.tremors * (1 if self.iteration % 2 == 0 else -1)
                 else:
                     agent_joint_angles += action
+            #print('controlling agent')
             agent.control(agent.controllable_joint_indices, agent_joint_angles, gains[i], forces[i])
         if step_sim:
             # Update all agent positions

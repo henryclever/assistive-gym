@@ -86,10 +86,11 @@ class PoseEstimator():
 
 
 
-    def __init__(self, dataset_info_dict):
+    def __init__(self, dataset_info_dict, volatile_directory):
         self.gender = dataset_info_dict['gender']
         model_path = '../smpl/models/basicModel_' + self.gender[0] + '_lbs_10_207_0_v1.0.0.pkl'
         m = load_model(model_path)
+        self.volatile_directory = volatile_directory
 
         self.m = m
 
@@ -565,7 +566,7 @@ class PoseEstimator():
 
         smpl_faces = np.array(m.f)
 
-        outmesh_human_path = "/home/henry/git/assistive-gym/assistive_gym/envs/assets/human_mesh/human_est.obj"
+        outmesh_human_path = self.volatile_directory+"human_est.obj"
         with open(outmesh_human_path, 'w') as fp:
             for v_idx in range(smpl_verts.shape[0]):
                 fp.write('v %f %f %f\n' % (smpl_verts[v_idx, 0], smpl_verts[v_idx, 1], smpl_verts[v_idx, 2]))

@@ -88,12 +88,12 @@ class HumanMesh(Agent):
 
             print("loaded human URDF", directory)
             human_visual = p.createVisualShape(shapeType=p.GEOM_MESH,
-                                               fileName=os.path.join(directory, 'human_mesh','human.obj'),
+                                               fileName=directory+'human.obj',
                                                rgbaColor=[0.2, 0.2, 1.0, 1], specularColor=[0.2, 0.2, 0.2],
                                                meshScale=[1.0, 1.0, 1.0], physicsClientId=id)
             #
             human_collision = p.createCollisionShape(shapeType=p.GEOM_MESH,
-                                               fileName=os.path.join(directory, 'human_mesh','human_vhacd.obj'),
+                                               fileName=directory+'human_vhacd.obj',
                                                meshScale=[1.0, 1.0, 1.0], flags=p.GEOM_FORCE_CONCAVE_TRIMESH,
                                                physicsClientId=id)
             self.body = p.createMultiBody(baseMass=0, baseCollisionShapeIndex=human_collision,
@@ -103,7 +103,7 @@ class HumanMesh(Agent):
 
 
         elif self.mesh_type == 'estimate':
-            self.body = p.loadURDF(os.path.join(directory, 'human_mesh', 'human_mesh_est.urdf'),
+            self.body = p.loadURDF(os.path.join(directory, 'human_mesh_est.urdf'),
                                    #basePosition=[-0.419, -0.864, 0.3048],
                                    basePosition=[0.0, 0.0, 0.0],#[-0.45776, -0.98504, 0.3048],
                                    baseOrientation=p.getQuaternionFromEuler([0.0, 0, 0], physicsClientId=id),

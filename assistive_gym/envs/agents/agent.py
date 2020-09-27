@@ -26,6 +26,9 @@ class Agent:
             gains = [gains]*len(indices)
         if type(forces) in [int, float]:
             forces = [forces]*len(indices)
+        #gains = [0.05, 0.05, 0.05, 0.05, 0.05, 0.02, 0.05]
+
+        #print(gains)
         p.setJointMotorControlArray(self.body, jointIndices=indices, controlMode=p.POSITION_CONTROL, targetPositions=target_angles, positionGains=gains, forces=forces, physicsClientId=self.id)
 
     def get_joint_angles(self, indices=None):
